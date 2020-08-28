@@ -14,4 +14,9 @@ Download the latest [release]() and put the `HypixelStatsOverlayMod-*.*.jar`-fil
 
 To make use of this mod's playlist, you'll need to bind your preferred key to `Show player list` under `HypixelStatsOverlayMod` in `Controls` settings.
 
+## Features
+
+Currently only `Bedwars` (overall stats) is supported!
+But I'm certianly looking forward to implement other games and expand the `Bedwars` stat choice!
+
 > Written with [StackEdit](https://stackedit.io/).
