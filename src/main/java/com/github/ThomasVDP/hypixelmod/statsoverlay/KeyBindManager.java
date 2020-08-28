@@ -10,7 +10,7 @@ public class KeyBindManager
 
     public static void init()
     {
-        TAB_KEY_BIND = new KeyBinding("key.statsoverlay.show", Keyboard.KEY_NONE, "key.hpstatsoverlay.category");
+        TAB_KEY_BIND = new KeyBinding("Show player list", Keyboard.KEY_NONE, "HypixelStatsOverlayMod");
 
         ClientRegistry.registerKeyBinding(TAB_KEY_BIND);
     }
