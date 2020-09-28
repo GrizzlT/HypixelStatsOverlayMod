@@ -12,7 +12,7 @@ Before you can use this add-on, you'll need the following mods:
 
 Download the latest [release](https://github.com/ThomasVDP/HypixelStatsOverlayMod/releases) and put the `HypixelStatsOverlayMod-*.*.jar`-file in the `CustomServerMods` directory in your Minecraft root folder.
 
-To make use of this mod's playlist, you'll need to bind your preferred key to `Show player list` under `HypixelStatsOverlayMod` in `Controls` settings.
+To make use of this mod's playerlist, you'll need to bind your preferred key to `Show player list` under `HypixelStatsOverlayMod` in `Controls` settings.
 
 ## Features
 
