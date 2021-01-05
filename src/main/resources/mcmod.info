@@ -1,14 +1,14 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example placeholder mod.",
+  "modid": "hypixelstatsoverlay",
+  "name": "Hypixel Stats Viewer",
+  "description": "A mod that adds statistics information in the tab-list when on Hypixel",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
-  "authorList": ["ExampleDude"],
-  "credits": "The Forge and FML guys, for making this example",
+  "authorList": ["GrizzlT"],
+  "credits": "The Forge and FML guys and Hypixel PublicAPI, for making this possible",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []

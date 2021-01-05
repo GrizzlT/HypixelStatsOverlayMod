@@ -1,4 +1,4 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.overlay;
+package com.github.grizzlt.hypixelstatsoverlay.overlay;
 
 import java.util.ArrayList;
 import java.util.List;

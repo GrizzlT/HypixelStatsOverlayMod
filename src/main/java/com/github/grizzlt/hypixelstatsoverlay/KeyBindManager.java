@@ -1,4 +1,4 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay;
+package com.github.grizzlt.hypixelstatsoverlay;
 
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.fml.client.registry.ClientRegistry;

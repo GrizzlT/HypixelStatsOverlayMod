@@ -1,7 +1,7 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.events;
+package com.github.grizzlt.hypixelstatsoverlay.events;
 
-import com.github.ThomasVDP.hypixelmod.statsoverlay.HypixelStatsOverlayMod;
-import com.github.ThomasVDP.hypixelmod.statsoverlay.KeyBindManager;
+import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
+import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.GuiPlayerTabOverlay;

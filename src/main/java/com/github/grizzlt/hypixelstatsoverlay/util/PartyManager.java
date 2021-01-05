@@ -1,5 +1,6 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.util;
+package com.github.grizzlt.hypixelstatsoverlay.util;
 
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
@@ -38,7 +39,8 @@ public class PartyManager
         // Case 1: join a party (leader specified)
         this.m = this.joinPartyOfPattern.matcher(message);
         if (this.m.find()) {
-            this.partyMembers.add(m.group("leader"));
+            this.addNameToList(Minecraft.getMinecraft().thePlayer.getGameProfile().getName());
+            this.addNameToList(m.group("leader"));
             return;
         }
 
@@ -53,7 +55,11 @@ public class PartyManager
         // Case 3: someone joined the party
         this.m = this.playerJoinedPartyPattern.matcher(message);
         if (m.find()) {
-            this.partyMembers.add(m.group("name"));
+            if (!this.partyMembers.contains(Minecraft.getMinecraft().thePlayer.getGameProfile().getName()))
+            {
+                this.partyMembers.add(Minecraft.getMinecraft().thePlayer.getGameProfile().getName());
+            }
+            this.addNameToList(m.group("name"));
             return;
         }
 
@@ -70,7 +76,7 @@ public class PartyManager
             String members = m.group("members") + ", ";
             this.m = this.joinPartyWithPattern2.matcher(members);
             while (m.find()) {
-                this.partyMembers.add(m.group("member"));
+                this.addNameToList(m.group("member"));
             }
             return;
         }
@@ -125,6 +131,19 @@ public class PartyManager
                 this.partyMembers.add(m.group("name"));
             }
         }
+    }
+
+    private void addNameToList(String name)
+    {
+        if (!this.partyMembers.contains(name))
+        {
+            this.partyMembers.add(name);
+        }
+    }
+
+    public void clearParty()
+    {
+        this.partyMembers.clear();
     }
 
     /*public String getPartyLeader()

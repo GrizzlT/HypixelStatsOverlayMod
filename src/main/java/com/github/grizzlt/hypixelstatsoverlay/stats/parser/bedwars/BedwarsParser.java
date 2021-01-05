@@ -1,14 +1,13 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.stats.parser.bedwars;
+package com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars;
 
-import com.github.ThomasVDP.hypixelmod.statsoverlay.stats.parser.RequestWrapper;
-import com.github.ThomasVDP.shadowedLibs.net.hypixel.api.reply.PlayerReply;
-import com.github.ThomasVDP.shadowedLibs.net.hypixel.api.reply.StatusReply;
+import com.github.grizzlt.hypixelstatsoverlay.stats.parser.RequestWrapper;
+import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.PlayerReply;
+import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.StatusReply;
 import com.google.common.collect.ComparisonChain;
 import com.google.gson.JsonObject;
-import com.github.ThomasVDP.hypixelmod.statsoverlay.HypixelStatsOverlayMod;
-import com.github.ThomasVDP.hypixelmod.statsoverlay.KeyBindManager;
-import com.github.ThomasVDP.hypixelmod.statsoverlay.stats.IGameParser;
-import com.github.ThomasVDP.hypixelmod.statsoverlay.util.BwSniperHaxRequester;
+import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
+import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
+import com.github.grizzlt.hypixelstatsoverlay.stats.IGameParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.GuiPlayerTabOverlay;
@@ -28,8 +27,7 @@ import java.util.*;
 
 public class BedwarsParser implements IGameParser
 {
-    private Comparator<NetworkPlayerInfo> playerComparator = new BedwarsComparator(this);
-    private BwSniperHaxRequester sniperHaxRequester = new BwSniperHaxRequester();
+    private final Comparator<NetworkPlayerInfo> playerComparator = new BedwarsComparator(this);
     private final BedwarsGuiTabListOverlay bwGuiTabRenderer = new BedwarsGuiTabListOverlay(this);
 
     /**
@@ -71,7 +69,9 @@ public class BedwarsParser implements IGameParser
         }*/
 
         this.isInLobby = statusReply.getSession().getMode().equals("LOBBY"); //change isInLobby default to true
+        this.playersInList.values().forEach(tuple -> tuple.getFirst().cancel());
         this.playersInList.clear();
+        System.out.println("In lobby? " + this.isInLobby);
     }
 
     @Override
@@ -203,7 +203,7 @@ public class BedwarsParser implements IGameParser
     /**
      * returns the bedwars level of the player
      *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.ThomasVDP.hypixelpublicapi.HypixelPublicAPIModLibrary}
+     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
      * @return bw level when found, otherwise -1, -2 when nicked
      */
     private static int getBwLevel(JsonObject playerObject)
@@ -222,7 +222,7 @@ public class BedwarsParser implements IGameParser
     /**
      * returns the fkdr of the player
      *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.ThomasVDP.hypixelpublicapi.HypixelPublicAPIModLibrary}
+     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
      * @return the fkdr when found, -1 when no final deaths, -2 when not found, -3 when nicked
      */
     private static double getFKDR(JsonObject playerObject)
@@ -248,7 +248,7 @@ public class BedwarsParser implements IGameParser
     /**
      * returns the current winstreak of the player
      *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.ThomasVDP.hypixelpublicapi.HypixelPublicAPIModLibrary}
+     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
      * @return the winstreak when found, otherwise -1, -2 when nicked
      */
     private static int getWinStreak(JsonObject playerObject)
@@ -268,7 +268,7 @@ public class BedwarsParser implements IGameParser
     /**
      * returns the win-loss ration of the player
      *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.ThomasVDP.hypixelpublicapi.HypixelPublicAPIModLibrary}
+     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
      * @return the wlr when found, -1 when no losses, -2 when not found, -3 when nicked
      */
     private static double getWinLossRatio(JsonObject playerObject)
@@ -294,7 +294,7 @@ public class BedwarsParser implements IGameParser
     /**
      * returns the beds-broken-beds-lost-ratio of the player
      *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.ThomasVDP.hypixelpublicapi.HypixelPublicAPIModLibrary}
+     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
      * @return the bblr when found, -1 when no beds lost, -2 when not found, -3 when nicked
      */
     private static double getBBLR(JsonObject playerObject)

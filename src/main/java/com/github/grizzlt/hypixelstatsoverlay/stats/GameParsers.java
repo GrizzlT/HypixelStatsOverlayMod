@@ -1,11 +1,15 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.stats;
+package com.github.grizzlt.hypixelstatsoverlay.stats;
 
-import com.github.ThomasVDP.hypixelmod.statsoverlay.HypixelStatsOverlayMod;
-import com.github.ThomasVDP.hypixelmod.statsoverlay.stats.parser.bedwars.BedwarsParser;
-import com.github.ThomasVDP.hypixelpublicapi.error.PublicAPIKeyMissingException;
-import com.github.ThomasVDP.shadowedLibs.net.hypixel.api.util.GameType;
+import com.github.grizzlt.hypixelpublicapi.error.PublicAPIKeyMissingException;
+import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
+import com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars.BedwarsParser;
+import com.github.grizzlt.shadowedLibs.net.hypixel.api.util.GameType;
+import com.github.grizzlt.shadowedLibs.reactor.core.Disposable;
+import com.github.grizzlt.shadowedLibs.reactor.core.publisher.Mono;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -29,6 +33,7 @@ public class GameParsers
      */
     private GameType currentGameType;
     private String mode = "";
+    private Disposable currentStatusRequest = null;
     /**
      * A boolean declaring we are waiting/handling a status request
      */
@@ -75,22 +80,21 @@ public class GameParsers
         this.isJoiningWorld.set(true);
         try {
             System.out.println("Sent status request!");
-            HypixelStatsOverlayMod.apiContainer.getAPI().handleHypixelAPIRequest(api ->
-                api.getStatus(player.getUniqueID())).whenComplete((statusReply, throwable) -> {
-                    if (onThrowableResult(throwable)) return;
-
-                    //if (this.currentGameType == statusReply.getSession().getGameType() && this.mode.equals(statusReply.getSession().getMode()))
-                    //    return;
-
-                    if (PARSERS.get(statusReply.getSession().getGameType()) != null) {
-                        PARSERS.get(statusReply.getSession().getGameType()).onPlayerSwitchWorld(statusReply, event);
-                    }
-                    this.currentGameType = statusReply.getSession().getGameType();
-                    this.isJoiningWorld.set(false);
-                });
+            if (this.currentStatusRequest != null) this.currentStatusRequest.dispose();
+            this.currentStatusRequest = HypixelStatsOverlayMod.apiContainer.getAPI().handleHypixelAPIRequest(api ->
+                    api.getStatus(player.getUniqueID()))
+                    .flatMap(statusReply -> Mono.fromRunnable(() ->{
+                        System.out.println("Status request came back!!!");
+                        if (PARSERS.get(statusReply.getSession().getGameType()) != null) {
+                            PARSERS.get(statusReply.getSession().getGameType()).onPlayerSwitchWorld(statusReply, event);
+                        }
+                        this.currentGameType = statusReply.getSession().getGameType();
+                        this.isJoiningWorld.set(false);
+                    })).subscribe();
         } catch (PublicAPIKeyMissingException e) {
             //e.printStackTrace();
-            System.out.println("Don't forget to set your public key!");
+            System.out.println("Public key was not set, skipping everything else!");
+            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Don't forget to set your api key! Restart the game after you've done that!"));
             this.isJoiningWorld.set(false);
         }
     }

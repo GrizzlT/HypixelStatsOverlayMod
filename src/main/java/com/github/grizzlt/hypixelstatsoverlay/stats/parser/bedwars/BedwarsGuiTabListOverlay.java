@@ -1,6 +1,6 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.stats.parser.bedwars;
+package com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars;
 
-import com.github.ThomasVDP.hypixelmod.statsoverlay.HypixelStatsOverlayMod;
+import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import net.labymod.main.LabyMod;
 import net.labymod.user.User;
 import net.labymod.user.UserManager;

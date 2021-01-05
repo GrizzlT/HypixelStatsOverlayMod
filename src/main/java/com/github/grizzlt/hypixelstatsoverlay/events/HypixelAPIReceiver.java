@@ -1,7 +1,7 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.events;
+package com.github.grizzlt.hypixelstatsoverlay.events;
 
-import com.github.ThomasVDP.hypixelpublicapi.HypixelPublicAPIModLibrary;
-import com.github.ThomasVDP.hypixelpublicapi.event.OnHpPublicAPIReadyEvent;
+import com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary;
+import com.github.grizzlt.hypixelpublicapi.event.OnHpPublicAPIReadyEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 public class HypixelAPIReceiver

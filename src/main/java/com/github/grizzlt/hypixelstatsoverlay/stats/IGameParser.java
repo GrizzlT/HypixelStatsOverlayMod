@@ -1,6 +1,6 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.stats;
+package com.github.grizzlt.hypixelstatsoverlay.stats;
 
-import com.github.ThomasVDP.shadowedLibs.net.hypixel.api.reply.StatusReply;
+import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.StatusReply;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;

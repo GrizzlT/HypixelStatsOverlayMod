@@ -1,4 +1,4 @@
-package com.github.ThomasVDP.hypixelmod.statsoverlay.util;
+package com.github.grizzlt.hypixelstatsoverlay.util;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
