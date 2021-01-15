@@ -23,11 +23,11 @@ public class PartyInspectCommand extends CommandBase
     @Override
     public void processCommand(ICommandSender sender, String[] args) throws CommandException
     {
-        String message = "Party includes: ";
-        for (String name : HypixelStatsOverlayMod.partyManager.getPartyMembers())
+        StringBuilder message = new StringBuilder("Party includes: ");
+        for (String name : HypixelStatsOverlayMod.partyManager.getPartyMembers().keySet())
         {
-            message += name + ", ";
+            message.append(name).append(", ");
         }
-        sender.addChatMessage(new ChatComponentText(message));
+        sender.addChatMessage(new ChatComponentText(message.toString()));
     }
 }

@@ -1,15 +1,15 @@
 package com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars;
 
+import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
+import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
+import com.github.grizzlt.hypixelstatsoverlay.stats.IGameParser;
 import com.github.grizzlt.hypixelstatsoverlay.stats.parser.RequestWrapper;
+import com.github.grizzlt.hypixelstatsoverlay.util.ReflectionContainer;
 import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.PlayerReply;
 import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.StatusReply;
 import com.google.common.collect.ComparisonChain;
 import com.google.gson.JsonObject;
-import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
-import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
-import com.github.grizzlt.hypixelstatsoverlay.stats.IGameParser;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.GuiPlayerTabOverlay;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.scoreboard.ScoreObjective;
@@ -20,15 +20,13 @@ import net.minecraft.world.WorldSettings;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
-import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
-import java.lang.reflect.Field;
 import java.util.*;
 
 public class BedwarsParser implements IGameParser
 {
     private final Comparator<NetworkPlayerInfo> playerComparator = new BedwarsComparator(this);
-    private final BedwarsGuiTabListOverlay bwGuiTabRenderer = new BedwarsGuiTabListOverlay(this);
+    private final BedwarsGameGuiOverlay bwGameTabRenderer = new BedwarsGameGuiOverlay(this);
 
     /**
      * main storage of the playerdata
@@ -37,39 +35,10 @@ public class BedwarsParser implements IGameParser
 
     private boolean isInLobby = false;
 
-    /**
-     * Reflection Fields
-     */
-    private final Field guiTabOverlayField;
-
-    public BedwarsParser()
-    {
-        Class<?> guiIngameClass;
-        try {
-            Class<?> labyMainClazz = Class.forName("net.labymod.main.LabyMod");
-            //labymod active
-            guiIngameClass = Class.forName("net.labymod.core_implementation.mc18.gui.GuiIngameCustom");
-        } catch (ClassNotFoundException e) {
-            //e.printStackTrace();
-            //no labymod active
-            guiIngameClass = GuiIngame.class;
-        }
-        this.guiTabOverlayField = ReflectionHelper.findField(guiIngameClass, "overlayPlayerList", "field_175196_v");
-    }
-
     @Override
     public void onPlayerSwitchWorld(StatusReply statusReply, EntityJoinWorldEvent event)
     {
-        /*Scoreboard sb = Minecraft.getMinecraft().theWorld.getScoreboard();
-        ScoreObjective objective = sb.getObjectiveInDisplaySlot(1);
-        System.out.println("Title: " + objective.getName());
-        List<String> lines = ScoreboardUtil.getSidebarLines();
-        for (String s : lines) {
-            System.out.println(s);
-        }*/
-
         this.isInLobby = statusReply.getSession().getMode().equals("LOBBY"); //change isInLobby default to true
-        this.playersInList.values().forEach(tuple -> tuple.getFirst().cancel());
         this.playersInList.clear();
         System.out.println("In lobby? " + this.isInLobby);
     }
@@ -79,27 +48,24 @@ public class BedwarsParser implements IGameParser
     {
         if (!(Minecraft.getMinecraft().gameSettings.keyBindPlayerList.isKeyDown() || !KeyBindManager.TAB_KEY_BIND.isKeyDown()))
         {
-            this.bwGuiTabRenderer.updatePlayerList(true);
-
             Scoreboard scoreboard = Minecraft.getMinecraft().theWorld.getScoreboard();
             ScoreObjective scoreObjective = scoreboard.getObjectiveInDisplaySlot(0);
             int width = event.resolution.getScaledWidth();
 
             if (this.isInLobby) {
                 try {
-                    ((GuiPlayerTabOverlay)guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)).updatePlayerList(true);
-                    ((GuiPlayerTabOverlay)guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)).renderPlayerlist(width, scoreboard, scoreObjective);
+                    ((GuiPlayerTabOverlay)ReflectionContainer.guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)).updatePlayerList(true);
+                    ((GuiPlayerTabOverlay)ReflectionContainer.guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)).renderPlayerlist(width, scoreboard, scoreObjective);
                 } catch (IllegalAccessException ex) {
                     //ex.printStackTrace();
                 }
                 return;
             }
 
-            this.bwGuiTabRenderer.renderPlayerList(width, scoreboard, scoreObjective);
+            this.bwGameTabRenderer.renderPlayerList(width, scoreboard, scoreObjective);
         } else {
-            this.bwGuiTabRenderer.updatePlayerList(false);
             try {
-                ((GuiPlayerTabOverlay)guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)).updatePlayerList(false);
+                ((GuiPlayerTabOverlay)ReflectionContainer.guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)).updatePlayerList(false);
             } catch (IllegalAccessException e) {
                 //e.printStackTrace();
             }
@@ -137,16 +103,6 @@ public class BedwarsParser implements IGameParser
                     bwProfile.bblr = getBBLR(playerObject);
                 });
                 this.playersInList.put(playerInfoList[i].getGameProfile().getId(), new Tuple<>(requestWrapper, bwProfile));
-
-                /*this.sniperHaxRequester.sendSniperRequest(playerInfoList[i].getGameProfile().getName()).whenComplete((sniperHaxReply, throwable) -> {
-                    if (throwable != null) {
-                        throwable.printStackTrace();
-                        return;
-                    }
-
-                    bwProfile.sniper = sniperHaxReply.isSniper;
-                    bwProfile.hax = sniperHaxReply.hax;
-                });*/
             }
         }
     }
@@ -158,8 +114,6 @@ public class BedwarsParser implements IGameParser
         public double fkdr = -2;
         public double wlr = -2;
         public double bblr = -2;
-        public boolean sniper = false;
-        public int hax = 0;
     }
 
     static class BedwarsComparator implements Comparator<NetworkPlayerInfo>
@@ -178,7 +132,7 @@ public class BedwarsParser implements IGameParser
             int index1 = (int)(bwProfile1.level * bwProfile1.fkdr * bwProfile1.fkdr);
             int index2 = (int)(bwProfile2.level * bwProfile2.fkdr * bwProfile2.fkdr);
             return ComparisonChain.start()
-                    .compareFalseFirst(HypixelStatsOverlayMod.partyManager.getPartyMembers().contains(o1.getGameProfile().getName()), HypixelStatsOverlayMod.partyManager.getPartyMembers().contains(o2.getGameProfile().getName()))
+                    //.compareFalseFirst(HypixelStatsOverlayMod.partyManager.getPartyMembers().containsKey(o1.getGameProfile().getName()), HypixelStatsOverlayMod.partyManager.getPartyMembers().containsKey(o2.getGameProfile().getName()))
                     .compareTrueFirst(o1.getGameType() != WorldSettings.GameType.SPECTATOR, o2.getGameType() != WorldSettings.GameType.SPECTATOR)
                     .compare(scoreplayerteam != null ? scoreplayerteam.getColorPrefix() : "", scoreplayerteam1 != null ? scoreplayerteam1.getColorPrefix() : "")
                     /*.compareTrueFirst(bwProfile1.hax > 0, bwProfile2.hax > 0) //first get the hackers

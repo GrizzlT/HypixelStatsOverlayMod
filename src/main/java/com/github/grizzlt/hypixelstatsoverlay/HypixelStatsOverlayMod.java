@@ -53,7 +53,7 @@ public class HypixelStatsOverlayMod
     public void Init(FMLInitializationEvent event)
     {
         this.serverBasedRegisterUtil.Init();
-
+        
         this.serverBasedRegisterUtil.registerToEventBus(new RenderOverlayEventHandler());
         this.serverBasedRegisterUtil.registerToEventBus(gameParsers);
         this.serverBasedRegisterUtil.registerToEventBus(partyManager);

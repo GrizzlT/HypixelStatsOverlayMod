@@ -1,33 +1,44 @@
 package com.github.grizzlt.hypixelstatsoverlay.util;
 
+import com.github.grizzlt.shadowedLibs.reactor.core.publisher.Mono;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Tuple;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PartyManager
 {
-    private final List<String> partyMembers = new ArrayList<>();
-    //sprivate String partyLeader = "";
+    private final Map<String, UUID> partyMembers = new HashMap<>();
+    private String partyLeader = "";
 
-    Pattern joinPartyOfPattern = Pattern.compile("^You have joined (?<leader>.*?)'s party!$");
-    Pattern joinPartyWithPattern1 = Pattern.compile("^You'll be partying with: (?<members>.*?)$");
-    Pattern joinPartyWithPattern2 = Pattern.compile("^(?:(?<member>[^, ]+), )+$");
-    Pattern playerJoinedPartyPattern = Pattern.compile("^(?<name>.*?) joined the party.$");
-    Pattern playerLeftPartyPattern = Pattern.compile("^(?<name>.*?) has left the party.$");
-    Pattern partyTransferredToDisconnectPattern = Pattern.compile("^The party was transferred to (?:.*?) because (?:\\[.*?] )?(?<leader>.*?) left$");
-    //Pattern partyTransferredToPattern = Pattern.compile("The party was transferred to (?:\\[.*?] )?(?<leader>.*?) by (?:.*?)$");
-    Pattern kickedForOfflinePattern = Pattern.compile("^Kicked (?:\\[.*?] )?(?<member>.*?) because they were offline.$");
-    Pattern leftBecauseDisconnectedPattern = Pattern.compile("^(?:\\[.*] )?(?<name>.*?) was removed from your party because they disconnected$");
+    Pattern playerJoinedPartyPattern = Pattern.compile("^(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?) joined the party.$");
+    Pattern selfJoinedPartyPattern = Pattern.compile("^You have joined (?:\\[[^]]+]\\s)?(?<name>[^\\s]*?)'s party!$");
+    Pattern partyingWithPattern = Pattern.compile("^You'll be partying with: (?<members>.*?)$");
+    Pattern playerKickOfflinePattern = Pattern.compile("^Kicked (?<names>.*?) because they were offline.$");
+    Pattern partyListNamesComma = Pattern.compile("(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?)(?:,|$)");
+    Pattern playerLeftByOffline = Pattern.compile("^(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?) was removed from your party because they disconnected$");
+    Pattern playerLeftPartyPattern = Pattern.compile("^(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?) has left the party.$");
+    Pattern kickedFromPartyByPattern = Pattern.compile("^You have been kicked from the party by (?:\\[[^]]+]\\s)?(?<name>[^\\s]*?) $");
+    Pattern playerRemovedFromParty = Pattern.compile("^(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?) has been removed from the party.$");
+    Pattern partyDisbandedPattern = Pattern.compile("^(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?) has disbanded the party!$");
+    Pattern leaderTransferByLeave = Pattern.compile("^The party was transferred to (?:\\[[^]]+]\\s)?(?<to>[^\\s]*?) because (?:\\[[^]]+]\\s)?(?<from>[^\\s]*?) left$");
+    Pattern leaderTransferred = Pattern.compile("^The party was transferred to (?:\\[[^]]+]\\s)?(?<to>[^\\s]*?) by (?:\\[[^]]+]\\s)?(?<from>[^\\s]*?)$");
+    Pattern promoteToLeader = Pattern.compile("^(?:\\[[^]]+]\\s)?(?<from>[^\\s]*?) has promoted (?:\\[[^]]+]\\s)?(?<to>[^\\s]*?) to Party Leader$");
 
-    Pattern partyLeaderPattern = Pattern.compile("^Party Leader: (?:\\[.*?] )?(?<leader>.*?) ●$");
-    Pattern partyModeratorPattern = Pattern.compile("^Party Moderators: (?<names>.*?)$");
-    Pattern partyMemberPattern = Pattern.compile("^Party Members: (?<names>.*?)$");
-    Pattern memberStatusPattern = Pattern.compile("^(?:(?<name>[^ ]+) ● )*$");
+    Pattern partyLeaderPattern = Pattern.compile("^Party Leader: (?:\\[[^]]+]\\s)?(?<name>[^\\s]*?)\\s?●$");
+    Pattern partyModeratorsPattern = Pattern.compile("^Party Moderators: (?<moderators>.*?)$");
+    Pattern partyMembersPattern = Pattern.compile("^Party Members: (?<members>.*?)$");
+    Pattern partyMemberListNamePattern = Pattern.compile("(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?)\\s●\\s");
+
+    String leaveParty = "You left the party.";
+    String partyEmptyStr = "The party was disbanded because all invites expired and the party was empty";
+    String partyDisbandedLeaderOffline = "The party was disbanded because the party leader disconnected.";
 
     Matcher m;
 
@@ -36,122 +47,169 @@ public class PartyManager
     {
         String message = event.message.getUnformattedText();
 
-        // Case 1: join a party (leader specified)
-        this.m = this.joinPartyOfPattern.matcher(message);
-        if (this.m.find()) {
-            this.addNameToList(Minecraft.getMinecraft().thePlayer.getGameProfile().getName());
-            this.addNameToList(m.group("leader"));
+        if (message.equals(leaveParty))
+        {
+            this.clearParty();
+            return;
+        } else if (message.equals(partyEmptyStr))
+        {
+            this.clearParty();
+            return;
+        } else if (message.equals(partyDisbandedLeaderOffline))
+        {
+            this.clearParty();
             return;
         }
 
-        // Case 2: you left the party or party was disbanded
-        if (message.equals("You left the party.")
-                || message.equals("The party was disbanded because all invites expired and the party was empty")
-                || message.matches("^(.*?) has disbanded the party!$")) {
-            this.partyMembers.clear();
-            return;
-        }
-
-        // Case 3: someone joined the party
-        this.m = this.playerJoinedPartyPattern.matcher(message);
-        if (m.find()) {
-            if (!this.partyMembers.contains(Minecraft.getMinecraft().thePlayer.getGameProfile().getName()))
-            {
-                this.partyMembers.add(Minecraft.getMinecraft().thePlayer.getGameProfile().getName());
-            }
+        m = playerJoinedPartyPattern.matcher(message);
+        if (m.find())
+        {
             this.addNameToList(m.group("name"));
-            return;
-        }
-
-        // Case 4: someone left the party
-        this.m = this.playerLeftPartyPattern.matcher(message);
-        if (m.find()) {
-            this.partyMembers.remove(m.group("name"));
-            return;
-        }
-
-        // Case 5: join party (party members specified)
-        this.m = this.joinPartyWithPattern1.matcher(message);
-        if (this.m.find()) {
-            String members = m.group("members") + ", ";
-            this.m = this.joinPartyWithPattern2.matcher(members);
-            while (m.find()) {
-                this.addNameToList(m.group("member"));
+            if (!this.partyLeader.equals("")) {
+                this.partyLeader = Minecraft.getMinecraft().thePlayer.getName();
             }
             return;
         }
-
-        // Case 6: party was transferred (new leader)
-        this.m = this.partyTransferredToDisconnectPattern.matcher(message);
-        if (this.m.find()) {
-            this.partyMembers.add(m.group("leader"));
+        m = selfJoinedPartyPattern.matcher(message);
+        if (m.find())
+        {
+            this.addNameToList(m.group("name"));
+            this.partyLeader = m.group("name");
             return;
         }
-
-        // Case 7: Someone got kicked for being offline
-        this.m = this.kickedForOfflinePattern.matcher(message);
-        if (this.m.find()) {
-            this.partyMembers.remove(m.group("member"));
-            return;
-        }
-
-        // Case 8: Someone left because disconnected
-        this.m = this.leftBecauseDisconnectedPattern.matcher(message);
-        if (this.m.find()) {
-            this.partyMembers.remove(m.group("name"));
-        }
-
-        /*// Case 9: Party was transferred by choice (only when leader is necessary)
-        this.m = this.partyTransferredToPattern.matcher(message);
-        if (this.m.find()) {
-            this.partyMembers.add(m.group("leader"));
-        }*/
-
-        // Case 10 - 11 - 12: party leader, party moderator, party members,
-        this.m = this.partyLeaderPattern.matcher(message);
-        if (this.m.find()) {
-            this.partyMembers.add(m.group("leader"));
-            return;
-        }
-
-        this.m = this.partyModeratorPattern.matcher(message);
-        if (this.m.find()) {
-            String names = this.m.group("names");
-            this.m = this.memberStatusPattern.matcher(names);
-            while (this.m.find()) {
-                this.partyMembers.add(m.group("name"));
+        m = partyingWithPattern.matcher(message);
+        if (m.find())
+        {
+            String names = m.group("members");
+            Matcher m2 = partyListNamesComma.matcher(names);
+            while (m2.find())
+            {
+                this.addNameToList(m2.group("name"));
             }
+            return;
         }
-
-        this.m = this.partyMemberPattern.matcher(message);
-        if (this.m.find()) {
-            String names = this.m.group("names");
-            this.m = this.memberStatusPattern.matcher(names);
-            while (this.m.find()) {
-                this.partyMembers.add(m.group("name"));
+        m = playerKickOfflinePattern.matcher(message);
+        if (m.find())
+        {
+            String names = m.group("names");
+            Matcher m2 = partyListNamesComma.matcher(names);
+            while (m2.find())
+            {
+                this.removeNameFromList(m2.group("name"));
+            }
+            return;
+        }
+        m = playerLeftByOffline.matcher(message);
+        if (m.find())
+        {
+            this.removeNameFromList(m.group("name"));
+            return;
+        }
+        m = playerLeftPartyPattern.matcher(message);
+        if (m.find())
+        {
+            this.removeNameFromList(m.group("name"));
+            return;
+        }
+        m = kickedFromPartyByPattern.matcher(message);
+        if (m.find())
+        {
+            this.clearParty();
+            return;
+        }
+        m = playerRemovedFromParty.matcher(message);
+        if (m.find())
+        {
+            this.removeNameFromList(m.group("name"));
+            return;
+        }
+        m = partyDisbandedPattern.matcher(message);
+        if (m.find())
+        {
+            this.clearParty();
+            return;
+        }
+        m = leaderTransferByLeave.matcher(message);
+        if (m.find())
+        {
+            this.removeNameFromList(m.group("from"));
+            this.addNameToList(m.group("to"));
+            this.partyLeader = m.group("to");
+            return;
+        }
+        m = leaderTransferred.matcher(message);
+        if (m.find())
+        {
+            this.addNameToList(m.group("from"));
+            this.addNameToList(m.group("to"));
+            this.partyLeader = m.group("to");
+            return;
+        }
+        m = promoteToLeader.matcher(message);
+        if (m.find())
+        {
+            this.addNameToList(m.group("from"));
+            this.addNameToList(m.group("to"));
+            this.partyLeader = m.group("to");
+            return;
+        }
+        m = partyLeaderPattern.matcher(message);
+        if (m.find())
+        {
+            this.addNameToList(m.group("name"));
+            this.partyLeader = m.group("name");
+            return;
+        }
+        m = partyModeratorsPattern.matcher(message);
+        if (m.find())
+        {
+            String names = m.group("moderators");
+            Matcher m2 = partyMemberListNamePattern.matcher(names);
+            while (m2.find())
+            {
+                this.addNameToList(m2.group("name"));
+            }
+            return;
+        }
+        m = partyMembersPattern.matcher(message);
+        if (m.find())
+        {
+            String names = m.group("members");
+            Matcher m2 = partyMemberListNamePattern.matcher(names);
+            while (m2.find())
+            {
+                this.addNameToList(m2.group("name"));
             }
         }
     }
 
     private void addNameToList(String name)
     {
-        if (!this.partyMembers.contains(name))
+        if (!this.partyMembers.containsKey(name))
         {
-            this.partyMembers.add(name);
+            Mono.fromFuture(McUUUILookup.getUuidMono(name))
+                    .flatMap(uuid -> Mono.fromRunnable(() -> this.partyMembers.put(name, uuid)))
+                    .subscribe();
         }
+    }
+
+    private void removeNameFromList(String name)
+    {
+        this.partyMembers.remove(name);
     }
 
     public void clearParty()
     {
         this.partyMembers.clear();
+        this.partyLeader = "";
     }
 
-    /*public String getPartyLeader()
+    public Tuple<String, UUID> getPartyLeader()
     {
-        return this.partyLeader;
-    }*/
+        return new Tuple<>(this.partyLeader, this.partyMembers.get(this.partyLeader));
+    }
 
-    public List<String> getPartyMembers()
+    public Map<String, UUID> getPartyMembers()
     {
         return this.partyMembers;
     }

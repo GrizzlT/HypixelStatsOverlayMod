@@ -21,18 +21,8 @@ public class RequestWrapper
         })).subscribe();
     }
 
-    public void cancel()
-    {
-        request.dispose();
-    }
-
     public AbstractReply getReply()
     {
         return this.reply;
-    }
-
-    public boolean isDone()
-    {
-        return this.isDone;
     }
 }

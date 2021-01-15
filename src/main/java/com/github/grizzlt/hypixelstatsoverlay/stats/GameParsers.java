@@ -33,7 +33,6 @@ public class GameParsers
      */
     private GameType currentGameType;
     private String mode = "";
-    private Disposable currentStatusRequest = null;
     /**
      * A boolean declaring we are waiting/handling a status request
      */
@@ -80,8 +79,7 @@ public class GameParsers
         this.isJoiningWorld.set(true);
         try {
             System.out.println("Sent status request!");
-            if (this.currentStatusRequest != null) this.currentStatusRequest.dispose();
-            this.currentStatusRequest = HypixelStatsOverlayMod.apiContainer.getAPI().handleHypixelAPIRequest(api ->
+            HypixelStatsOverlayMod.apiContainer.getAPI().handleHypixelAPIRequest(api ->
                     api.getStatus(player.getUniqueID()))
                     .flatMap(statusReply -> Mono.fromRunnable(() ->{
                         System.out.println("Status request came back!!!");
