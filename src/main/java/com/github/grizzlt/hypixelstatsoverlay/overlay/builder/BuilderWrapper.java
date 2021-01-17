@@ -17,7 +17,7 @@ public class BuilderWrapper implements GuiOverlayBuilder
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         return this.wrapper.build();
     }

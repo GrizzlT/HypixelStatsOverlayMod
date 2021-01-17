@@ -66,6 +66,7 @@ public class PartyManager
         {
             this.addNameToList(m.group("name"));
             if (!this.partyLeader.equals("")) {
+                this.addNameToList(Minecraft.getMinecraft().thePlayer.getName());
                 this.partyLeader = Minecraft.getMinecraft().thePlayer.getName();
             }
             return;

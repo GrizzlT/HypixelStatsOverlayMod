@@ -20,7 +20,13 @@ public class GuiOverlayCenteredHorizontal implements IGuiOverlayComponent, GuiOv
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        this.child.prepareForDrawing();
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i size)
     {
         Vector2i childSizeVec = new Vector2i(child.getMaxWidth(size), child.getMaxHeight(size));
         this.child.draw(offset.add(new Vector2i((size.x - childSizeVec.x) / 2, 0)), childSizeVec);
@@ -51,7 +57,7 @@ public class GuiOverlayCenteredHorizontal implements IGuiOverlayComponent, GuiOv
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         GuiOverlayCenteredHorizontal newObj = new GuiOverlayCenteredHorizontal();
         if (this.chain.isPresent())

@@ -22,7 +22,7 @@ public class BuilderCached implements GuiOverlayBuilder
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         if (!this.built)
         {

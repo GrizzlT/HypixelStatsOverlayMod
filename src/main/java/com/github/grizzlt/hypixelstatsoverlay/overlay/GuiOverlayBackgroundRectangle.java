@@ -27,7 +27,13 @@ public class GuiOverlayBackgroundRectangle implements IGuiOverlayComponent, GuiO
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        this.child.prepareForDrawing();
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i size)
     {
         Vector2i childSize = new Vector2i(this.getMaxWidth(size), this.getMaxHeight(size)).substract(new Vector2i(margin * 2, margin * 2));
         Gui.drawRect(offset.x, offset.y, offset.x + childSize.x + margin, offset.y + childSize.y + margin, this.color);
@@ -71,7 +77,7 @@ public class GuiOverlayBackgroundRectangle implements IGuiOverlayComponent, GuiO
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         GuiOverlayBackgroundRectangle newObj = new GuiOverlayBackgroundRectangle(this.color, this.margin);
         if (this.chain.isPresent())

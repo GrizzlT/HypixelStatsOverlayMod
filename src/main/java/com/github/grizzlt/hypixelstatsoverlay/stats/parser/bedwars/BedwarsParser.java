@@ -7,26 +7,25 @@ import com.github.grizzlt.hypixelstatsoverlay.stats.parser.RequestWrapper;
 import com.github.grizzlt.hypixelstatsoverlay.util.ReflectionContainer;
 import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.PlayerReply;
 import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.StatusReply;
-import com.google.common.collect.ComparisonChain;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiPlayerTabOverlay;
-import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.scoreboard.ScoreObjective;
-import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.Tuple;
-import net.minecraft.world.WorldSettings;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class BedwarsParser implements IGameParser
 {
-    private final Comparator<NetworkPlayerInfo> playerComparator = new BedwarsComparator(this);
     private final BedwarsGameGuiOverlay bwGameTabRenderer = new BedwarsGameGuiOverlay(this);
+    //private final BedwarsLobbyGuiOverlay bwLobbyTabRenderer = new BedwarsLobbyGuiOverlay(this);
 
     /**
      * main storage of the playerdata
@@ -78,75 +77,44 @@ public class BedwarsParser implements IGameParser
 
     }
 
-    /**
-     * Used to collect and process all data of the players in playersInTabList
-     *
-     * @param playersInTabList the {@link Collection} of players we need to process
-     */
-    public void gatherPlayers(Collection<NetworkPlayerInfo> playersInTabList)
+    public void gatherPlayers(List<UUID> uuids)
     {
-        NetworkPlayerInfo[] playerInfoList = playersInTabList.toArray(new NetworkPlayerInfo[0]);
-
-        for (int i = 0; i < playerInfoList.length; ++i)
+        for (UUID id : uuids)
         {
-            if (!this.playersInList.containsKey(playerInfoList[i].getGameProfile().getId())) {
-                int finalI = i;
-                BedwarsProfile bwProfile = new BedwarsProfile();
+            if (!this.playersInList.containsKey(id))
+            {
+                BedwarsProfile profile = new BedwarsProfile();
                 RequestWrapper requestWrapper = new RequestWrapper(HypixelStatsOverlayMod.apiContainer.getAPI().handleHypixelAPIRequest(api ->
-                        api.getPlayerByUuid(playerInfoList[finalI].getGameProfile().getId())
+                        api.getPlayerByUuid(id)
                 ), wrapper -> {
                     JsonObject playerObject = ((PlayerReply)wrapper.getReply()).getPlayer();
-                    bwProfile.level = getBwLevel(playerObject);
-                    bwProfile.winstreak = getWinStreak(playerObject);
-                    bwProfile.wlr = getWinLossRatio(playerObject);
-                    bwProfile.fkdr = getFKDR(playerObject);
-                    bwProfile.bblr = getBBLR(playerObject);
+                    profile.level = getBwLevel(playerObject);
+                    profile.winstreak = getWinStreak(playerObject);
+                    profile.wlr = getWinLossRatio(playerObject);
+                    profile.fkdr = getFKDR(playerObject);
+                    profile.bblr = getBBLR(playerObject);
+                    profile.calculateScore();
                 });
-                this.playersInList.put(playerInfoList[i].getGameProfile().getId(), new Tuple<>(requestWrapper, bwProfile));
+                this.playersInList.put(id, new Tuple<>(requestWrapper, profile));
             }
         }
     }
 
-    static class BedwarsProfile
+    public static class BedwarsProfile
     {
         public int level = -1;
         public int winstreak = -1;
         public double fkdr = -2;
         public double wlr = -2;
         public double bblr = -2;
-    }
 
-    static class BedwarsComparator implements Comparator<NetworkPlayerInfo>
-    {
-        private final BedwarsParser bwParser;
+        public double score = 1.0;
 
-        private BedwarsComparator(BedwarsParser bwParser) { this.bwParser = bwParser; }
-
-        @Override
-        public int compare(NetworkPlayerInfo o1, NetworkPlayerInfo o2) {
-            ScorePlayerTeam scoreplayerteam = o1.getPlayerTeam();
-            ScorePlayerTeam scoreplayerteam1 = o2.getPlayerTeam();
-
-            BedwarsProfile bwProfile1 = this.bwParser.playersInList.get(o1.getGameProfile().getId()).getSecond();
-            BedwarsProfile bwProfile2 = this.bwParser.playersInList.get(o2.getGameProfile().getId()).getSecond();
-            int index1 = (int)(bwProfile1.level * bwProfile1.fkdr * bwProfile1.fkdr);
-            int index2 = (int)(bwProfile2.level * bwProfile2.fkdr * bwProfile2.fkdr);
-            return ComparisonChain.start()
-                    //.compareFalseFirst(HypixelStatsOverlayMod.partyManager.getPartyMembers().containsKey(o1.getGameProfile().getName()), HypixelStatsOverlayMod.partyManager.getPartyMembers().containsKey(o2.getGameProfile().getName()))
-                    .compareTrueFirst(o1.getGameType() != WorldSettings.GameType.SPECTATOR, o2.getGameType() != WorldSettings.GameType.SPECTATOR)
-                    .compare(scoreplayerteam != null ? scoreplayerteam.getColorPrefix() : "", scoreplayerteam1 != null ? scoreplayerteam1.getColorPrefix() : "")
-                    /*.compareTrueFirst(bwProfile1.hax > 0, bwProfile2.hax > 0) //first get the hackers
-                    .compareTrueFirst(bwProfile1.sniper, bwProfile2.sniper) // then get the snipers*/
-                    .compareTrueFirst(bwProfile1.fkdr == -3, bwProfile2.fkdr == -3) // then get the nicked players
-                    .compare(index2, index1) //swapped values to get highest one first
-                    .compare(o1.getGameProfile().getName(), o2.getGameProfile().getName())
-                    .result();
+        public void calculateScore()
+        {
+            double fkdrMax = Math.max(0, fkdr);
+            this.score = (10 + Math.max(level, 0)) * fkdrMax * fkdrMax * (winstreak > 0 ? winstreak * 0.625 : 1);
         }
-    }
-
-    public Comparator<NetworkPlayerInfo> getBwComparator()
-    {
-        return this.playerComparator;
     }
 
     public Map<UUID, Tuple<RequestWrapper, BedwarsProfile>> getPlayerDataMap()
@@ -261,7 +229,7 @@ public class BedwarsParser implements IGameParser
                 JsonObject bwObj = statsObj.getAsJsonObject("Bedwars");
                 int bedsBroken = bwObj.get("beds_broken_bedwars").getAsInt();
                 int bedsLost = bwObj.get("beds_lost_bedwars").getAsInt();
-                if (bedsBroken != 0) {
+                if (bedsLost != 0) {
                     return (double)bedsBroken / (double)bedsLost;
                 } else {
                     return -1;

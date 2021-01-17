@@ -17,7 +17,7 @@ public class GuiOverlayBackgroundFill extends GuiOverlayBackgroundRectangle
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void draw(Vector2i offset, Vector2i size)
     {
         Vector2i childSize = new Vector2i(this.getMaxWidth(size), this.getMaxHeight(size)).substract(new Vector2i(margin * 2, margin * 2));
         Gui.drawRect(offset.x, offset.y, offset.x + size.x, offset.y + size.y, this.color);
@@ -25,7 +25,7 @@ public class GuiOverlayBackgroundFill extends GuiOverlayBackgroundRectangle
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         GuiOverlayBackgroundFill newObj = new GuiOverlayBackgroundFill(this.color, this.margin);
         if (this.chain.isPresent())

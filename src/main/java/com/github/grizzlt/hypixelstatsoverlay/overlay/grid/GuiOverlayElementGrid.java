@@ -24,7 +24,16 @@ public class GuiOverlayElementGrid implements IGuiOverlayComponent, GuiOverlayBu
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        for (IGuiOverlayComponent child : children)
+        {
+            child.prepareForDrawing();
+        }
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i size)
     {
         int offsetX = 0;
         int[] heights = new int[this.dimension.y];
@@ -169,7 +178,7 @@ public class GuiOverlayElementGrid implements IGuiOverlayComponent, GuiOverlayBu
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         GuiOverlayElementGrid newObj = new GuiOverlayElementGrid(this.dimension);
         for (int i = 0; i < this.childrenBuilders.length; ++i)

@@ -10,7 +10,7 @@ import java.util.concurrent.Callable;
 
 public interface GuiOverlayBuilder
 {
-    IGuiOverlayComponent build() throws Exception;
+    IGuiOverlayComponent build();
 
     /**
      * Don't forget to have {@link GuiOverlayBackgroundRectangle#setChild(IGuiOverlayComponent)} called after this!!

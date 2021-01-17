@@ -25,7 +25,13 @@ public class GuiOverlayTexturedRectangle implements IGuiOverlayComponent, GuiOve
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i renderSize) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        //do nothing
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i renderSize)
     {
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         GlStateManager.enableAlpha();

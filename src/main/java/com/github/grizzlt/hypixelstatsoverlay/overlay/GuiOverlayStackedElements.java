@@ -12,7 +12,16 @@ public class GuiOverlayStackedElements implements IGuiOverlayComponent, GuiOverl
     protected List<GuiOverlayBuilder> childrenBuilders = new ArrayList<>();
 
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        for (IGuiOverlayComponent child : children)
+        {
+            child.prepareForDrawing();
+        }
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i size)
     {
         for (IGuiOverlayComponent child : children)
         {
@@ -55,7 +64,7 @@ public class GuiOverlayStackedElements implements IGuiOverlayComponent, GuiOverl
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         GuiOverlayStackedElements newObj = new GuiOverlayStackedElements();
         for (GuiOverlayBuilder builder : childrenBuilders)

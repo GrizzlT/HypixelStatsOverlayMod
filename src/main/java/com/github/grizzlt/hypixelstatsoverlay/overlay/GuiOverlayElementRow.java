@@ -12,7 +12,16 @@ public class GuiOverlayElementRow implements IGuiOverlayComponent, GuiOverlayBui
     protected List<GuiOverlayBuilder> childrenBuilders = new ArrayList<>();
 
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        for (IGuiOverlayComponent child : children)
+        {
+            child.prepareForDrawing();
+        }
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i size)
     {
         Vector2i relativeChildOffset = new Vector2i(0, 0);
         int maxHeight = this.getMaxHeight(size);
@@ -66,7 +75,7 @@ public class GuiOverlayElementRow implements IGuiOverlayComponent, GuiOverlayBui
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         GuiOverlayElementRow newObj = new GuiOverlayElementRow();
         for (GuiOverlayBuilder builder : childrenBuilders)

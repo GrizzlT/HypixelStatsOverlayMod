@@ -10,8 +10,6 @@ public class GuiOverlaySpacing implements IGuiOverlayComponent, GuiOverlayBuilde
     protected Vector2i margin;
     Callable<Vector2i> marginCallable;
 
-    private GuiOverlaySpacing() {}
-
     public GuiOverlaySpacing(Vector2i margin)
     {
         this(() -> margin);
@@ -20,6 +18,12 @@ public class GuiOverlaySpacing implements IGuiOverlayComponent, GuiOverlayBuilde
     public GuiOverlaySpacing(Callable<Vector2i> callable)
     {
         this.marginCallable = callable;
+    }
+
+    @Override
+    public void prepareForDrawing() throws Exception
+    {
+        this.margin = marginCallable.call();
     }
 
     @Override
@@ -41,10 +45,8 @@ public class GuiOverlaySpacing implements IGuiOverlayComponent, GuiOverlayBuilde
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
-        GuiOverlaySpacing newObj = new GuiOverlaySpacing();
-        newObj.margin = this.marginCallable.call();
-        return newObj;
+        return new GuiOverlaySpacing(this.marginCallable);
     }
 }

@@ -6,7 +6,13 @@ import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
 public class GuiOverlayEmpty implements IGuiOverlayComponent, GuiOverlayBuilder
 {
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        //do nothing
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i size)
     {
         //do nothing
     }
@@ -26,7 +32,7 @@ public class GuiOverlayEmpty implements IGuiOverlayComponent, GuiOverlayBuilder
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
         return this;
     }

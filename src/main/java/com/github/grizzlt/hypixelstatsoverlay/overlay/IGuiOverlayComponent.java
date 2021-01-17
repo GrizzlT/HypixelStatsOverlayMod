@@ -4,7 +4,9 @@ import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
 
 public interface IGuiOverlayComponent
 {
-    void draw(Vector2i offset, Vector2i size) throws Exception;
+    void prepareForDrawing() throws Exception;
+
+    void draw(Vector2i offset, Vector2i size);
 
     int getMaxWidth(Vector2i size);
 

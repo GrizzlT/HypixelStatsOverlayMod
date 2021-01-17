@@ -13,8 +13,6 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent, GuiOverlayBu
     protected IChatComponent text = null;
     protected Callable<IChatComponent> textCallable;
 
-    private GuiOverlayTextElement() {}
-
     public GuiOverlayTextElement(IChatComponent text)
     {
         this(() -> text);
@@ -26,7 +24,13 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent, GuiOverlayBu
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i size) throws Exception
+    public void prepareForDrawing() throws Exception
+    {
+        this.text = this.textCallable.call();
+    }
+
+    @Override
+    public void draw(Vector2i offset, Vector2i size)
     {
         List<String> lines = Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.text.getFormattedText(), size.x);
         int marginTop = 0;
@@ -52,10 +56,8 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent, GuiOverlayBu
     }
 
     @Override
-    public IGuiOverlayComponent build() throws Exception
+    public IGuiOverlayComponent build()
     {
-        GuiOverlayTextElement newObj = new GuiOverlayTextElement();
-        newObj.text = this.textCallable.call();
-        return newObj;
+        return new GuiOverlayTextElement(this.textCallable);
     }
 }
