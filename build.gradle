@@ -3,68 +3,106 @@
 buildscript {
     repositories {
         jcenter()
+        mavenCentral()
         maven {
             name = "forge"
             url = "http://files.minecraftforge.net/maven"
         }
+        maven {
+            url = "https://plugins.gradle.org/m2"
+        }
+        maven {
+            name = 'SpongePowered'
+            url = 'https://repo.spongepowered.org/maven'
+        }
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
+        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
     }
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'org.spongepowered.mixin'
+apply plugin: 'com.github.johnrengelman.shadow'
 
-/*
-// for people who want stable - not yet functional for MC 1.8.8 - we require the forgegradle 2.1 snapshot
-plugins {
-    id "net.minecraftforge.gradle.forge" version "2.0.2"
-}
-*/
-version = "1.1.0"
+version = "2.0.0"
 group= "com.github.grizzlt.hypixelstatsoverlay" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "HypixelStatsOverlayMod"
 
-sourceCompatibility = targetCompatibility = 8
+sourceCompatibility = targetCompatibility = 1.8
+
+// Use UTF-8 for encoding
+compileJava.options.encoding = 'UTF-8'
 
 minecraft {
-    version = "1.8.9-11.15.1.1855"
+    version = "1.8.9-11.15.1.2318-1.8.9"
     runDir = "run"
-    mappings = "stable_20"
+    mappings = "stable_22"
     // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 }
 
-
-allprojects
-{
-    repositories
-    {
-        maven { url "https://jitpack.io" }
+repositories {
+    mavenLocal()
+    mavenCentral()
+    jcenter()
+    maven { url "https://jitpack.io" }
+    maven {
+        name = 'spongepowered-repo'
+        url = 'https://repo.spongepowered.org/maven/'
     }
 }
 
-configurations {
-    shade
-    compile.extendsFrom shade
-}
-
 dependencies {
-    shade 'com.github.GrizzlT:ServerBasedClientModLibrary:1.8.9-SNAPSHOT'
-    provided 'com.github.GrizzlT:HypixelPublicAPIMod:library-SNAPSHOT'
+    compile('org.spongepowered:mixin:0.6.4-SNAPSHOT') {
+        exclude module: 'launchwrapper'
+    }
 
+    compile 'com.github.GrizzlT:ServerBasedClientModLibrary:1.8.9-SNAPSHOT'
+    provided 'com.github.grizzlt.hypixel-public-api:hypixel-public-api-modapi:2.0.0'
+
+    provided 'org.jetbrains:annotations:21.0.1'
 }
 
+mixin {
+    add sourceSets.main, 'hypixelstatsoverlay.mixins.refmap.json'
+}
+
+shadowJar {
+    dependencies {
+        include(dependency('org.spongepowered:mixin'))
+        include(dependency('com.github.GrizzlT:ServerBasedClientModLibrary'))
+        exclude(dependency('com.github.grizzlt.hypixel-public-api:hypixel-public-api-modapi'))
+        exclude(dependency('org.jetbrains:annotations'))
+    }
+
+    classifier = 'mixin-shadow'
+}
+
+build.dependsOn(shadowJar)
+
+//noinspection GroovyMissingReturnStatement
 reobf {
-    jar {
+    shadowJar {
+        extraLines "PK: reactor com/github/grizzlt/hypixelpublicapi/shadowedLibs/reactor"
+        extraLines "PK: net/hypixel/api com/github/grizzlt/hypixelpublicapi/shadowedLibs/net/hypixel/api"
+        extraLines "PK: org/reactivestreams com/github/grizzlt/hypixelpublicapi/shadowedLibs/org/reactivestreams"
+        extraLines "PK: io/netty/channel io/netty/channel"
+
         extraLines "PK: com/github/grizzlt/serverbasedmodlibrary com/github/grizzlt/hypixelstatsoverlay/shadowedLibs/com/github/grizzlt/serverbasedmodlibrary"
     }
 }
 
-jar {
-    configurations.shade.each { dep ->
-        from(project.zipTree(dep)) {
-            exclude 'META-INF', 'META-INF/**'
-        }
-    }
+shadowJar {
+    manifest.attributes(
+            'MixinConfigs': 'hypixelstatsoverlay.mixins.json',
+            'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+            'TweakOrder': 0,
+
+            "ForceLoadAsMod": "true",
+            'FMLCorePluginContainsFMLMod': 'true',
+            'FMLCorePlugin': 'com.github.grizzlt.hypixelstatsoverlay.coremod.MixinLoader'
+    )
 }
 
 configurations.all {

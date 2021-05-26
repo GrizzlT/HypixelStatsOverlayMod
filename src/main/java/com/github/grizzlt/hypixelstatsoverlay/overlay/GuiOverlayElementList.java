@@ -1,15 +1,17 @@
 package com.github.grizzlt.hypixelstatsoverlay.overlay;
 
-import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.GuiOverlayBuilder;
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class GuiOverlayElementList implements IGuiOverlayComponent, GuiOverlayBuilder
+public class GuiOverlayElementList implements IGuiOverlayComponent
 {
     protected List<IGuiOverlayComponent> children = new ArrayList<>();
-    protected List<GuiOverlayBuilder> childrenBuilders = new ArrayList<>();
+
+    protected GuiOverlayElementList() {}
 
     @Override
     public void prepareForDrawing() throws Exception
@@ -55,26 +57,15 @@ public class GuiOverlayElementList implements IGuiOverlayComponent, GuiOverlayBu
         return maxHeight;
     }
 
-    public GuiOverlayElementList addChild(IGuiOverlayComponent child)
+    @Contract(value = " -> new", pure = true)
+    public static @NotNull GuiOverlayElementList create()
+    {
+        return new GuiOverlayElementList();
+    }
+
+    public GuiOverlayElementList withChild(@NotNull IGuiOverlayComponent child)
     {
         this.children.add(child);
         return this;
-    }
-
-    public GuiOverlayElementList addBuilder(GuiOverlayBuilder child)
-    {
-        this.childrenBuilders.add(child);
-        return this;
-    }
-
-    @Override
-    public IGuiOverlayComponent build()
-    {
-        GuiOverlayElementList newObj = new GuiOverlayElementList();
-        for (GuiOverlayBuilder builder : this.childrenBuilders)
-        {
-            newObj.addChild(builder.build());
-        }
-        return newObj;
     }
 }

@@ -1,5 +1,6 @@
 package com.github.grizzlt.hypixelstatsoverlay;
 
+import com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModApi;
 import com.github.grizzlt.hypixelstatsoverlay.commands.PartyInspectCommand;
 import com.github.grizzlt.hypixelstatsoverlay.commands.PartyResetCommand;
 import com.github.grizzlt.hypixelstatsoverlay.events.HypixelAPIReceiver;
@@ -11,33 +12,18 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import org.jetbrains.annotations.NotNull;
 
-/**
- * The Main-Class of this little addon/mod
- * that will be used as an entry point when the ServerModsFoundation loads all its addons
- */
-@Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME, version = Reference.VERSION)
+import java.util.Objects;
+
+@Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME)
 public class HypixelStatsOverlayMod
 {
-    /**
-     * The {@link HypixelAPIReceiver} that will hold a reference to the apiManager instance
-     */
-    public static HypixelAPIReceiver apiContainer = new HypixelAPIReceiver();
-    /**
-     * The {@link GameParsers} instance
-     */
-    public static GameParsers gameParsers = new GameParsers();
-    /**
-     * The {@link PartyManager} instance
-     */
-    public static PartyManager partyManager = new PartyManager();
+    private final HypixelAPIReceiver apiContainer = new HypixelAPIReceiver();
+    private final GameParsers gameParsers = new GameParsers();
+    private final PartyManager partyManager = new PartyManager();
 
-    /**
-     * the ServerBasedRegisterUtil instance;
-     */
-    private ServerBasedRegisterUtil serverBasedRegisterUtil = new ServerBasedRegisterUtil(
-            address -> address.getHostName().contains("hypixel.net")
-    );
+    private final ServerBasedRegisterUtil serverBasedRegisterUtil = new ServerBasedRegisterUtil(address -> address.getHostName().contains("hypixel.net"));
 
     @Mod.Instance
     public static HypixelStatsOverlayMod instance;
@@ -58,8 +44,28 @@ public class HypixelStatsOverlayMod
         this.serverBasedRegisterUtil.registerToEventBus(gameParsers);
         this.serverBasedRegisterUtil.registerToEventBus(partyManager);
 
+        GameParsers.registerGameParsers();
+
         MinecraftForge.EVENT_BUS.register(apiContainer);
 
         KeyBindManager.init();
+    }
+
+    @NotNull
+    public HypixelPublicAPIModApi getHypixelApiMod()
+    {
+        return Objects.requireNonNull(this.apiContainer.getAPI());
+    }
+
+    @NotNull
+    public GameParsers getGameParsers()
+    {
+        return this.gameParsers;
+    }
+
+    @NotNull
+    public PartyManager getPartyManager()
+    {
+        return this.partyManager;
     }
 }

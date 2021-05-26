@@ -22,6 +22,6 @@ public class PartyResetCommand extends CommandBase
     @Override
     public void processCommand(ICommandSender sender, String[] args) throws CommandException
     {
-        HypixelStatsOverlayMod.partyManager.clearParty();
+        HypixelStatsOverlayMod.instance.getPartyManager().clearParty();
     }
 }

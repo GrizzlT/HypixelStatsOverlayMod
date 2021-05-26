@@ -1,29 +1,16 @@
 package com.github.grizzlt.hypixelstatsoverlay.overlay;
 
-import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.GuiOverlayBuilder;
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
 
-import java.util.concurrent.Callable;
-
-public class GuiOverlaySpacing implements IGuiOverlayComponent, GuiOverlayBuilder
+public class GuiOverlaySpacing implements IGuiOverlayComponent
 {
-    protected Vector2i margin;
-    Callable<Vector2i> marginCallable;
+    protected Vector2i margin = Vector2i.ZERO;
 
-    public GuiOverlaySpacing(Vector2i margin)
-    {
-        this(() -> margin);
-    }
-
-    public GuiOverlaySpacing(Callable<Vector2i> callable)
-    {
-        this.marginCallable = callable;
-    }
+    protected GuiOverlaySpacing() {}
 
     @Override
     public void prepareForDrawing() throws Exception
     {
-        this.margin = marginCallable.call();
     }
 
     @Override
@@ -44,9 +31,26 @@ public class GuiOverlaySpacing implements IGuiOverlayComponent, GuiOverlayBuilde
         return this.margin.y;
     }
 
-    @Override
-    public IGuiOverlayComponent build()
+    public static GuiOverlaySpacing create()
     {
-        return new GuiOverlaySpacing(this.marginCallable);
+        return new GuiOverlaySpacing();
+    }
+
+    public GuiOverlaySpacing withMargin(Vector2i margin)
+    {
+        this.margin = margin;
+        return this;
+    }
+
+    public GuiOverlaySpacing withWidth(int width)
+    {
+        this.margin.setX(width);
+        return this;
+    }
+
+    public GuiOverlaySpacing withHeight(int height)
+    {
+        this.margin.setY(height);
+        return this;
     }
 }

@@ -1,16 +1,13 @@
 package com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars;
 
 import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
+import com.github.grizzlt.hypixelstatsoverlay.mixin.GuiPlayerTabOverlayMixin;
 import com.github.grizzlt.hypixelstatsoverlay.overlay.IGuiOverlayComponent;
-import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.BuilderWrapper;
-import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.GuiOverlayBuilder;
+import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.TabGui;
 import com.github.grizzlt.hypixelstatsoverlay.overlay.grid.GuiOverlayElementGrid;
-import com.github.grizzlt.hypixelstatsoverlay.util.NetworkPlayerInfoWrapper;
-import com.github.grizzlt.hypixelstatsoverlay.util.PartyManager;
-import com.github.grizzlt.hypixelstatsoverlay.util.ReflectionContainer;
+import com.github.grizzlt.hypixelstatsoverlay.util.TabListHeaderFooterAccess;
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
 import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Lists;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.scoreboard.ScoreObjective;
@@ -18,36 +15,30 @@ import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.IChatComponent;
-import net.minecraft.util.Tuple;
 import net.minecraft.world.WorldSettings;
 
-import java.awt.*;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 public class BedwarsGameGuiOverlay
 {
-    /**
-     * the instance of the {@link BedwarsParser}
-     */
     private final BedwarsParser bwParser;
     private final Comparator<NetworkPlayerInfo> playerComparator;
     private final Comparator<NetworkPlayerInfo> partyComparator;
 
     //cached variable
     private final DecimalFormat df;
+    private final Vector2i vector8x8 = new Vector2i(8, 8);
 
-    private GuiOverlayBuilder rootBuilder;
     private IGuiOverlayComponent root;
-    private BuilderWrapper contentWrapper = GuiOverlayBuilder.wrapper();
-    private List<NetworkPlayerInfoWrapper> cached = new ArrayList<>();
-
-    //cache
-    private final Vector2i cached8x8 = new Vector2i(8, 8);
+    private IGuiOverlayComponent playerList = TabGui.EMPTY;
+    private boolean needsUpdate = true;
 
     public BedwarsGameGuiOverlay(BedwarsParser parser)
     {
@@ -63,27 +54,23 @@ public class BedwarsGameGuiOverlay
 
     private void buildGuiSkeleton()
     {
-        rootBuilder = GuiOverlayBuilder.centerHorizontal().setBuilder(GuiOverlayBuilder.background(Integer.MIN_VALUE, 1)
-                .setBuilder(GuiOverlayBuilder.verticalList()
-                        .addBuilder(GuiOverlayBuilder.centerHorizontal().setBuilder(
-                                GuiOverlayBuilder.text(() -> (IChatComponent)ReflectionContainer.headerField.get(ReflectionContainer.guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)))))
-                        .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(0, 2)))
-                        .addBuilder(GuiOverlayBuilder.centerHorizontal().setBuilder(contentWrapper))
-                        .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(0, 2)))
-                        .addBuilder(GuiOverlayBuilder.centerHorizontal().setBuilder(
-                                GuiOverlayBuilder.text(() -> (IChatComponent)ReflectionContainer.footerField.get(ReflectionContainer.guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)))))
+        root = TabGui.centerHorizontal().withChild(TabGui.background(Integer.MIN_VALUE, 1)
+                .withChild(TabGui.verticalList()
+                        .withChild(TabGui.centerHorizontal(TabGui.text(() -> ((TabListHeaderFooterAccess)Minecraft.getMinecraft().ingameGUI.getTabList()).getHeader())))
+                        .withChild(TabGui.spacing().withHeight(2))
+                        .withChild(TabGui.centerHorizontal(playerList))
+                        .withChild(TabGui.spacing().withHeight(2))
+                        .withChild(TabGui.centerHorizontal(TabGui.text(() -> ((TabListHeaderFooterAccess)Minecraft.getMinecraft().ingameGUI.getTabList()).getFooter())))
                 )
         );
     }
 
     public void renderPlayerList(int width, Scoreboard scoreboard, ScoreObjective scoreObjective)
     {
-        List<NetworkPlayerInfoWrapper> players = Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap().stream().map(NetworkPlayerInfoWrapper::new).collect(Collectors.toList());
-        if (!players.equals(this.cached))
-        {
+        if (this.needsUpdate) {
             System.out.println("Building gui!");
-            this.root = this.buildGui(scoreObjective);
-            this.cached = players;
+            this.playerList = buildGui(scoreObjective);
+            this.needsUpdate = false;
         }
 
         try
@@ -98,234 +85,187 @@ public class BedwarsGameGuiOverlay
 
     private IGuiOverlayComponent buildGui(ScoreObjective objective)
     {
-        List<NetworkPlayerInfo> playersInGame = new ArrayList<>();
-        List<NetworkPlayerInfo> playersInParty = new ArrayList<>();
-        Map<String, UUID> partyMembers = HypixelStatsOverlayMod.partyManager.getPartyMembers();
-        if (!partyMembers.isEmpty())
-        {
-            for (NetworkPlayerInfo playerInfo : Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap())
-            {
-                if (partyMembers.containsValue(playerInfo.getGameProfile().getId()))
-                {
-                    playersInParty.add(playerInfo);
-                } else {
-                    playersInGame.add(playerInfo);
-                }
-            }
-        } else {
-            playersInGame = Lists.newArrayList(Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap());
-        }
+        List<NetworkPlayerInfo> playersInGame;
+        List<NetworkPlayerInfo> playersInParty;
+        Map<String, UUID> partyMembers = HypixelStatsOverlayMod.instance.getPartyManager().getPartyMembers();
+        Map<Boolean, List<NetworkPlayerInfo>> playerLists = Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap().stream()
+                .collect(Collectors.partitioningBy(info -> partyMembers.containsValue(info.getGameProfile().getId())));
+        playersInGame = playerLists.get(false);
+        playersInParty = playerLists.get(true);
+
         //get their stats when not already done so
         this.bwParser.gatherPlayers(playersInGame.stream().map(player -> player.getGameProfile().getId()).collect(Collectors.toList()));
         this.bwParser.gatherPlayers(playersInParty.stream().map(player -> player.getGameProfile().getId()).collect(Collectors.toList()));
 
-        GuiOverlayBuilder gameGrid = GuiOverlayBuilder.empty();
+        IGuiOverlayComponent gameGrid = TabGui.EMPTY;
         if (!playersInGame.isEmpty())
         {
-            //sort these players
             List<NetworkPlayerInfo> sortedPlayersInGame = playersInGame.stream().sorted(this.playerComparator).collect(Collectors.toList());
 
             int rowCount = sortedPlayersInGame.size() + 1;
-            GuiOverlayElementGrid tempGrid = GuiOverlayBuilder.grid(new Vector2i(10, rowCount));
+            GuiOverlayElementGrid tempGrid = TabGui.grid(new Vector2i(10, rowCount));
 
             //first row with titles
-            tempGrid.setRowBuilders(0,
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("FKDR")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("WLR")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("WS")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("BBLR")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("VAL")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.empty()
-            );
+            this.createTitles(tempGrid);
 
             for (int i = 1; i < rowCount; ++i)
             {
                 NetworkPlayerInfo player = sortedPlayersInGame.get(i - 1);
-                BedwarsParser.BedwarsProfile profile = this.bwParser.getPlayerDataMap().get(player.getGameProfile().getId()).getSecond();
-                Tuple<String, Integer> backgroundColorPlayer = this.getPlayerName(player, profile);
-                tempGrid.setRowBuilders(i,
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))
-                                .addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.level == -1 || profile.level == -2 ? " [?✫] " : (" [" + profile.level + "✫] "))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))
-                        ),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.stacked()
-                                        .addBuilder(GuiOverlayBuilder.texturedRect(player.getLocationSkin(), cached8x8, cached8x8, cached8x8, new Vector2i(64, 64)))
-                                        .addBuilder(GuiOverlayBuilder.texturedRect(player.getLocationSkin(), new Vector2i(40, 8), cached8x8, cached8x8, new Vector2i(64, 64))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.text(() -> {
-                                    if (player.getGameType() == WorldSettings.GameType.SPECTATOR) return new ChatComponentText(EnumChatFormatting.GRAY + (EnumChatFormatting.ITALIC + backgroundColorPlayer.getFirst()));
-                                    return new ChatComponentText(backgroundColorPlayer.getFirst());
-                                })).addBuilder(GuiOverlayBuilder.spacing(new Vector2i(5, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.fkdr == -3 || profile.fkdr == -2 ? "?" : profile.fkdr == -1 ? "NaN" : this.df.format(profile.fkdr))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.wlr == -3 || profile.wlr == -2 ? "?" : profile.wlr == -1 ? "NaN" : this.df.format(profile.wlr))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.winstreak == -2 || profile.winstreak == -1 ? "?" : String.valueOf(profile.winstreak))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.bblr == -3 || profile.bblr == -2 ? "?" : profile.bblr == -1 ? "NaN" : this.df.format(profile.bblr))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(this.df.format(profile.score / this.bwParser.getPlayerDataMap().get(Minecraft.getMinecraft().thePlayer.getUniqueID()).getSecond().score))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.empty(),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.text(() -> {
-                                    int ping = player.getResponseTime();
-                                    return new ChatComponentText((ping > 600 ? EnumChatFormatting.DARK_RED.toString() : ping > 300 ? EnumChatFormatting.RED.toString() : ping > 150 ? EnumChatFormatting.DARK_GREEN.toString() : EnumChatFormatting.GREEN.toString()) + (player.getResponseTime() == 0 ? "?" : player.getResponseTime()));
-                                }))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0))))
-                );
-
-                if (objective != null && player.getGameType() != WorldSettings.GameType.SPECTATOR)
-                {
-                    int score = objective.getScoreboard().getValueFromObjective(player.getGameProfile().getName(), objective).getScorePoints();
-                    tempGrid.setBuilder(i, 8, GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                            .addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(EnumChatFormatting.YELLOW + String.valueOf(score))))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))));
-                }
+                this.generatePlayerInformationRow(player, objective, tempGrid, i);
 
                 if (i < sortedPlayersInGame.size())
                 {
-                    tempGrid.setRowSpacing(i, 1);
+                    tempGrid.withRowSpacing(i, 1);
                 }
             }
-            gameGrid = GuiOverlayBuilder.centerHorizontal().setBuilder(GuiOverlayBuilder.verticalList()
-                    .addBuilder(GuiOverlayBuilder.centerHorizontal().setBuilder(GuiOverlayBuilder.text(new ChatComponentText(EnumChatFormatting.BLUE + "== PLAYERS =="))))
-                    .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(0, 1)))
-                    .addBuilder(tempGrid));
+            gameGrid = TabGui.centerHorizontal().withChild(TabGui.verticalList()
+                    .withChild(TabGui.centerHorizontal().withChild(TabGui.text(new ChatComponentText(EnumChatFormatting.BLUE + "== PLAYERS =="))))
+                    .withChild(TabGui.spacing().withHeight(1))
+                    .withChild(tempGrid));
         }
 
-        GuiOverlayBuilder partyGrid = GuiOverlayBuilder.empty();
+        IGuiOverlayComponent partyGrid = TabGui.EMPTY;
         if (!playersInParty.isEmpty())
         {
             //sort these players
             List<NetworkPlayerInfo> sortedPlayersInParty = playersInParty.stream().sorted(this.partyComparator).collect(Collectors.toList());
 
             int rowCount = sortedPlayersInParty.size() + 1;
-            GuiOverlayElementGrid tempGrid = GuiOverlayBuilder.grid(new Vector2i(10, rowCount));
+            GuiOverlayElementGrid tempGrid = TabGui.grid(new Vector2i(10, rowCount));
 
             //first row with titles
-            tempGrid.setRowBuilders(0,
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("FKDR")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("WLR")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("WS")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("BBLR")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(new ChatComponentText("VAL")))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(2, 0))),
-                    GuiOverlayBuilder.empty(),
-                    GuiOverlayBuilder.empty()
-            );
+            createTitles(tempGrid);
 
             for (int i = 1; i < rowCount; ++i)
             {
                 NetworkPlayerInfo player = sortedPlayersInParty.get(i - 1);
-                BedwarsParser.BedwarsProfile profile = this.bwParser.getPlayerDataMap().get(player.getGameProfile().getId()).getSecond();
-                Tuple<String, Integer> backgroundColorPlayer = this.getPlayerName(player, profile);
-                tempGrid.setRowBuilders(i,
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))
-                                .addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.level == -1 || profile.level == -2 ? " [?✫] " : (" [" + profile.level + "✫] "))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))
-                        ),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.stacked()
-                                        .addBuilder(GuiOverlayBuilder.texturedRect(player.getLocationSkin(), cached8x8, cached8x8, cached8x8, new Vector2i(64, 64)))
-                                        .addBuilder(GuiOverlayBuilder.texturedRect(player.getLocationSkin(), new Vector2i(40, 8), cached8x8, cached8x8, new Vector2i(64, 64))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.text(() -> {
-                                    if (player.getGameType() == WorldSettings.GameType.SPECTATOR) return new ChatComponentText(EnumChatFormatting.GRAY + (EnumChatFormatting.ITALIC + backgroundColorPlayer.getFirst()));
-                                    return new ChatComponentText(backgroundColorPlayer.getFirst());
-                                })).addBuilder(GuiOverlayBuilder.spacing(new Vector2i(5, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.fkdr == -3 || profile.fkdr == -2 ? "?" : profile.fkdr == -1 ? "NaN" : this.df.format(profile.fkdr))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.wlr == -3 || profile.wlr == -2 ? "?" : profile.wlr == -1 ? "NaN" : this.df.format(profile.wlr))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.winstreak == -2 || profile.winstreak == -1 ? "?" : String.valueOf(profile.winstreak))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(profile.bblr == -3 || profile.bblr == -2 ? "?" : profile.bblr == -1 ? "NaN" : this.df.format(profile.bblr))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList().addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(this.df.format(profile.score / this.bwParser.getPlayerDataMap().get(Minecraft.getMinecraft().thePlayer.getUniqueID()).getSecond().score))))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(3, 0)))),
-                        GuiOverlayBuilder.empty(),
-                        GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                                .addBuilder(GuiOverlayBuilder.text(() -> {
-                                    int ping = player.getResponseTime();
-                                    return new ChatComponentText((ping > 600 ? EnumChatFormatting.DARK_RED.toString() : ping > 300 ? EnumChatFormatting.RED.toString() : ping > 150 ? EnumChatFormatting.DARK_GREEN.toString() : EnumChatFormatting.GREEN.toString()) + (player.getResponseTime() == 0 ? "?" : player.getResponseTime()));
-                                }))
-                                .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0))))
-                );
-
-                if (objective != null && player.getGameType() != WorldSettings.GameType.SPECTATOR)
-                {
-                    int score = objective.getScoreboard().getValueFromObjective(player.getGameProfile().getName(), objective).getScorePoints();
-                    tempGrid.setBuilder(i, 8, GuiOverlayBuilder.fill(backgroundColorPlayer.getSecond(), 0).setBuilder(GuiOverlayBuilder.horizontalList()
-                            .addBuilder(GuiOverlayBuilder.text(() -> new ChatComponentText(EnumChatFormatting.YELLOW + String.valueOf(score))))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(1, 0)))));
-                }
+                this.generatePlayerInformationRow(player, objective, tempGrid, i);
 
                 if (i < sortedPlayersInParty.size())
                 {
-                    tempGrid.setRowSpacing(i, 1);
+                    tempGrid.withRowSpacing(i, 1);
                 }
             }
-            partyGrid = GuiOverlayBuilder.centerHorizontal().setBuilder(
-                    GuiOverlayBuilder.verticalList()
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(0, 5)))
-                            .addBuilder(GuiOverlayBuilder.centerHorizontal().setBuilder(GuiOverlayBuilder.text(new ChatComponentText(EnumChatFormatting.GOLD + "== PARTY =="))))
-                            .addBuilder(GuiOverlayBuilder.spacing(new Vector2i(0, 1)))
-                            .addBuilder(tempGrid));
+            partyGrid = TabGui.centerHorizontal().withChild(
+                    TabGui.verticalList()
+                            .withChild(TabGui.spacing().withHeight(5))
+                            .withChild(TabGui.centerHorizontal().withChild(TabGui.text(new ChatComponentText(EnumChatFormatting.GOLD + "== PARTY =="))))
+                            .withChild(TabGui.spacing().withHeight(1))
+                            .withChild(tempGrid));
         }
 
-        contentWrapper.setBuilder(GuiOverlayBuilder.verticalList()
-                .addBuilder(gameGrid)
-                .addBuilder(partyGrid)
-        );
-
-        return rootBuilder.build();
+        return TabGui.verticalList()
+                .withChild(gameGrid)
+                .withChild(partyGrid);
     }
 
-    /**
-     * Returns the playername but with certain suffixes appended when available
-     * (e.g. username {@literal (NICK)})
-     *
-     * @param networkPlayerInfoIn the {@link NetworkPlayerInfo} to identify the player
-     * @return a {@link Tuple} containing the username with suffix (first) and a possible color when necessary (second)
-     */
-    public Tuple<String, Integer> getPlayerName(NetworkPlayerInfo networkPlayerInfoIn, BedwarsParser.BedwarsProfile profile)
+    public void markDirty()
     {
+        this.needsUpdate = true;
+    }
+
+    public String getPlayerDisplayName(NetworkPlayerInfo networkPlayerInfoIn)
+    {
+        BedwarsParser.BedwarsProfile profile = getBwProfile(networkPlayerInfoIn);
         String suffix = "";
-        int color = 553648127;
         if (profile != null) {
             if (profile.fkdr == -3)
             {
                 suffix = " (NICK)";
-                color = new Color(255, 13, 13, 89).getRGB();
             }
         }
-        /*if (HypixelStatsOverlayMod.partyManager.getPartyMembers().containsKey(networkPlayerInfoIn.getGameProfile().getName()))
-        {
-            //color = new Color(255, 255, 255, 153).getRGB();
-        }*/
-        return new Tuple<>(networkPlayerInfoIn.getDisplayName() != null ? networkPlayerInfoIn.getDisplayName().getFormattedText() + suffix : ScorePlayerTeam.formatPlayerName(networkPlayerInfoIn.getPlayerTeam(), networkPlayerInfoIn.getGameProfile().getName() + suffix), color);
+        return getPlayerName(networkPlayerInfoIn) + suffix;
+    }
+
+    public int getPlayerNameColor(BedwarsParser.BedwarsProfile profile)
+    {
+        return profile.fkdr == -3 ? ((89 & 0xFF) << 24) | ((0xFF) << 16) | ((13 & 0xFF) << 8)  | ((13 & 0xFF)): 553648127;
+    }
+
+    private String getPlayerName(NetworkPlayerInfo info)
+    {
+        return info.getDisplayName() != null ? info.getDisplayName().getFormattedText() : ScorePlayerTeam.formatPlayerName(info.getPlayerTeam(), info.getGameProfile().getName());
+    }
+
+    private BedwarsParser.BedwarsProfile getBwProfile(NetworkPlayerInfo playerInfo)
+    {
+        return this.bwParser.getPlayerDataMap().get(playerInfo.getGameProfile().getId());
+    }
+
+    private void createTitles(GuiOverlayElementGrid grid)
+    {
+        grid.withRow(0,
+                TabGui.EMPTY, TabGui.EMPTY, TabGui.EMPTY,
+                TabGui.horizontalList().withChild(TabGui.text(new ChatComponentText("FKDR")))
+                        .withChild(TabGui.spacing().withWidth(2)),
+                TabGui.horizontalList().withChild(TabGui.text(new ChatComponentText("WLR")))
+                        .withChild(TabGui.spacing().withWidth(2)),
+                TabGui.horizontalList().withChild(TabGui.text(new ChatComponentText("WS")))
+                        .withChild(TabGui.spacing().withWidth(2)),
+                TabGui.horizontalList().withChild(TabGui.text(new ChatComponentText("BBLR")))
+                        .withChild(TabGui.spacing().withWidth(2)),
+                TabGui.horizontalList().withChild(TabGui.text(new ChatComponentText("VAL")))
+                        .withChild(TabGui.spacing().withWidth(2)),
+                TabGui.EMPTY, TabGui.EMPTY
+        );
+    }
+
+    private void generatePlayerInformationRow(NetworkPlayerInfo playerInfo, ScoreObjective objective, GuiOverlayElementGrid grid, int row)
+    {
+        Callable<Integer> backgroundColor = () -> getPlayerNameColor(getBwProfile(playerInfo));
+
+        grid.withRow(row,
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
+                        .withChild(TabGui.spacing().withWidth(1)))
+                        .withChild(TabGui.text(() -> {
+                            BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
+                            return new ChatComponentText(profile.level == -1 || profile.level == -2 ? " [?✫] " : (" [" + profile.level + "✫] "));
+                        }))
+                        .withChild(TabGui.spacing().withWidth(1)),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
+                        .withChild(TabGui.stacked()
+                                .withChild(TabGui.texturedRect(playerInfo.getLocationSkin(), vector8x8, vector8x8, vector8x8, new Vector2i(64, 64)))
+                                .withChild(TabGui.texturedRect(playerInfo.getLocationSkin(), new Vector2i(40, 8), vector8x8, vector8x8, new Vector2i(64, 64))))
+                        .withChild(TabGui.spacing().withWidth(1))),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
+                        .withChild(TabGui.text(() -> {
+                            String playerDisplayName = getPlayerDisplayName(playerInfo);
+                            if (playerInfo.getGameType() == WorldSettings.GameType.SPECTATOR) return new ChatComponentText(EnumChatFormatting.GRAY + (EnumChatFormatting.ITALIC + playerDisplayName));
+                            return new ChatComponentText(playerDisplayName);
+                        })).withChild(TabGui.spacing().withWidth(5))),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
+                    BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
+                    return new ChatComponentText(profile.fkdr < -1.8 ? "?" : profile.fkdr < -0.8 ? "NaN" : this.df.format(profile.fkdr));
+                })).withChild(TabGui.spacing().withWidth(3))),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
+                    BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
+                    return new ChatComponentText(profile.wlr < -1.8 ? "?" : profile.wlr < -0.8 ? "NaN" : this.df.format(profile.wlr));
+                })).withChild(TabGui.spacing().withWidth(3))),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
+                    BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
+                    return new ChatComponentText(profile.winstreak <= -1 ? "?" : String.valueOf(profile.winstreak));
+                })).withChild(TabGui.spacing().withWidth(3))),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
+                    BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
+                    return new ChatComponentText(profile.bblr < -2.8 ? "?" : profile.bblr < -0.8 ? "NaN" : this.df.format(profile.bblr));
+                })).withChild(TabGui.spacing().withWidth(3))),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
+                    BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
+                    return new ChatComponentText(this.df.format(profile.score / this.bwParser.getPlayerDataMap().get(Minecraft.getMinecraft().thePlayer.getUniqueID()).score));
+                })).withChild(TabGui.spacing().withWidth(3))),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
+                        .withChild(TabGui.text(() -> {
+                            if (objective == null || playerInfo.getGameType() == WorldSettings.GameType.SPECTATOR) return new ChatComponentText("");
+                            int score = objective.getScoreboard().getValueFromObjective(playerInfo.getGameProfile().getName(), objective).getScorePoints();
+                            return new ChatComponentText(EnumChatFormatting.YELLOW + String.valueOf(score));
+                        })).withChild(TabGui.spacing().withWidth(1))
+                ),
+                TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
+                        .withChild(TabGui.text(() -> {
+                            int ping = playerInfo.getResponseTime();
+                            return new ChatComponentText((ping > 600 ? EnumChatFormatting.DARK_RED.toString() : ping > 300 ? EnumChatFormatting.RED.toString() : ping > 150 ? EnumChatFormatting.DARK_GREEN.toString() : EnumChatFormatting.GREEN.toString()) + (playerInfo.getResponseTime() == 0 ? "?" : playerInfo.getResponseTime()));
+                        })).withChild(TabGui.spacing().withWidth(1)))
+        );
     }
 
     static class BedwarsComparator implements Comparator<NetworkPlayerInfo>
@@ -336,10 +276,11 @@ public class BedwarsGameGuiOverlay
 
         @Override
         public int compare(NetworkPlayerInfo o1, NetworkPlayerInfo o2) {
-            BedwarsParser.BedwarsProfile bwProfile1 = this.bwParser.getPlayerDataMap().get(o1.getGameProfile().getId()).getSecond();
-            BedwarsParser.BedwarsProfile bwProfile2 = this.bwParser.getPlayerDataMap().get(o2.getGameProfile().getId()).getSecond();
+            BedwarsParser.BedwarsProfile bwProfile1 = this.bwParser.getPlayerDataMap().get(o1.getGameProfile().getId());
+            BedwarsParser.BedwarsProfile bwProfile2 = this.bwParser.getPlayerDataMap().get(o2.getGameProfile().getId());
             ScorePlayerTeam scoreplayerteam = o1.getPlayerTeam();
             ScorePlayerTeam scoreplayerteam1 = o2.getPlayerTeam();
+
             return ComparisonChain.start()
                     .compareTrueFirst(o1.getGameType() != WorldSettings.GameType.SPECTATOR, o2.getGameType() != WorldSettings.GameType.SPECTATOR)
                     .compareTrueFirst(bwProfile1.fkdr == -3, bwProfile2.fkdr == -3) // then get the nicked players
@@ -358,10 +299,11 @@ public class BedwarsGameGuiOverlay
 
         @Override
         public int compare(NetworkPlayerInfo o1, NetworkPlayerInfo o2) {
-            BedwarsParser.BedwarsProfile bwProfile1 = this.bwParser.getPlayerDataMap().get(o1.getGameProfile().getId()).getSecond();
-            BedwarsParser.BedwarsProfile bwProfile2 = this.bwParser.getPlayerDataMap().get(o2.getGameProfile().getId()).getSecond();
+            BedwarsParser.BedwarsProfile bwProfile1 = this.bwParser.getPlayerDataMap().get(o1.getGameProfile().getId());
+            BedwarsParser.BedwarsProfile bwProfile2 = this.bwParser.getPlayerDataMap().get(o2.getGameProfile().getId());
+
             return ComparisonChain.start()
-                    .compareTrueFirst(HypixelStatsOverlayMod.partyManager.getPartyLeader().getSecond().equals(o1.getGameProfile().getId()), HypixelStatsOverlayMod.partyManager.getPartyLeader().getSecond().equals(o2.getGameProfile().getId()))
+                    .compareTrueFirst(HypixelStatsOverlayMod.instance.getPartyManager().getPartyLeader().getSecond().equals(o1.getGameProfile().getId()), HypixelStatsOverlayMod.instance.getPartyManager().getPartyLeader().getSecond().equals(o2.getGameProfile().getId()))
                     .compareTrueFirst(o1.getGameType() != WorldSettings.GameType.SPECTATOR, o2.getGameType() != WorldSettings.GameType.SPECTATOR)
                     .compareTrueFirst(bwProfile1.fkdr == -3, bwProfile2.fkdr == -3) // then get the nicked players
                     .compare(bwProfile2.score, bwProfile1.score)

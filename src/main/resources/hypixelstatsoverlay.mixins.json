@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "com.github.grizzlt.hypixelstatsoverlay.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "hypixelstatsoverlay.mixins.refmap.json",
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "NetHandlerPlayClientMixin",
+    "GuiPlayerTabOverlayMixin"
+  ]
+}

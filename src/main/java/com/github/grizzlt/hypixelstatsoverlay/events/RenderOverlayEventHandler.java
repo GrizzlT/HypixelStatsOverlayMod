@@ -10,9 +10,6 @@ import net.minecraft.scoreboard.Scoreboard;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
-/**
- * The main class for emitting onRenderOverlayEvent to the current GameParser
- */
 public class RenderOverlayEventHandler
 {
     @SubscribeEvent(receiveCanceled = true)
@@ -26,8 +23,8 @@ public class RenderOverlayEventHandler
 
     private void onGameOverlayRender(RenderGameOverlayEvent event)
     {
-        if (HypixelStatsOverlayMod.gameParsers.getCurrentGameParser() != null) {
-            HypixelStatsOverlayMod.gameParsers.getCurrentGameParser().onRenderGameOverlayEvent(event);
+        if (HypixelStatsOverlayMod.instance.getGameParsers().getCurrentGameParser() != null) {
+            HypixelStatsOverlayMod.instance.getGameParsers().getCurrentGameParser().onRenderGameOverlayEvent(event);
         } else {
             try {
                 if (!(Minecraft.getMinecraft().gameSettings.keyBindPlayerList.isKeyDown() || !KeyBindManager.TAB_KEY_BIND.isKeyDown())) {

@@ -1,15 +1,17 @@
 package com.github.grizzlt.hypixelstatsoverlay.overlay;
 
-import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.GuiOverlayBuilder;
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class GuiOverlayStackedElements implements IGuiOverlayComponent, GuiOverlayBuilder
+public class GuiOverlayStackedElements implements IGuiOverlayComponent
 {
     protected List<IGuiOverlayComponent> children = new ArrayList<>();
-    protected List<GuiOverlayBuilder> childrenBuilders = new ArrayList<>();
+
+    protected GuiOverlayStackedElements() {}
 
     @Override
     public void prepareForDrawing() throws Exception
@@ -51,26 +53,15 @@ public class GuiOverlayStackedElements implements IGuiOverlayComponent, GuiOverl
         return maxHeight;
     }
 
-    public GuiOverlayStackedElements addChild(IGuiOverlayComponent child)
+    @Contract(value = " -> new", pure = true)
+    public static @NotNull GuiOverlayStackedElements create()
+    {
+        return new GuiOverlayStackedElements();
+    }
+
+    public GuiOverlayStackedElements withChild(@NotNull IGuiOverlayComponent child)
     {
         this.children.add(child);
         return this;
-    }
-
-    public GuiOverlayStackedElements addBuilder(GuiOverlayBuilder builder)
-    {
-        this.childrenBuilders.add(builder);
-        return this;
-    }
-
-    @Override
-    public IGuiOverlayComponent build()
-    {
-        GuiOverlayStackedElements newObj = new GuiOverlayStackedElements();
-        for (GuiOverlayBuilder builder : childrenBuilders)
-        {
-            newObj.addChild(builder.build());
-        }
-        return newObj;
     }
 }

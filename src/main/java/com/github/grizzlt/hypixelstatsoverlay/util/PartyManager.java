@@ -1,20 +1,24 @@
 package com.github.grizzlt.hypixelstatsoverlay.util;
 
-import com.github.grizzlt.shadowedLibs.reactor.core.publisher.Mono;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Tuple;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import org.jetbrains.annotations.NotNull;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
-import java.util.HashMap;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PartyManager
 {
-    private final Map<String, UUID> partyMembers = new HashMap<>();
+    @NotNull
+    private final Map<String, UUID> partyMembers = new ConcurrentHashMap<>();
     private String partyLeader = "";
 
     Pattern playerJoinedPartyPattern = Pattern.compile("^(?:\\[[^]]+]\\s)?(?<name>[^\\s]*?) joined the party.$");
@@ -43,7 +47,7 @@ public class PartyManager
     Matcher m;
 
     @SubscribeEvent
-    public void onChatReceived(ClientChatReceivedEvent event)
+    public void onChatReceived(@NotNull ClientChatReceivedEvent event)
     {
         String message = event.message.getUnformattedText();
 
@@ -65,7 +69,7 @@ public class PartyManager
         if (m.find())
         {
             this.addNameToList(m.group("name"));
-            if (!this.partyLeader.equals("")) {
+            if (this.partyLeader.equals("")) {
                 this.addNameToList(Minecraft.getMinecraft().thePlayer.getName());
                 this.partyLeader = Minecraft.getMinecraft().thePlayer.getName();
             }
@@ -184,17 +188,22 @@ public class PartyManager
         }
     }
 
-    private void addNameToList(String name)
+    private void addNameToList(@NotNull String name)
     {
         if (!this.partyMembers.containsKey(name))
         {
-            Mono.fromFuture(McUUUILookup.getUuidMono(name))
-                    .flatMap(uuid -> Mono.fromRunnable(() -> this.partyMembers.put(name, uuid)))
+            McUUIDLookup.getUuidMono(name)
+                    .retryWhen(Retry.backoff(2, Duration.ofMillis(30)))
+                    .doOnError(IllegalArgumentException.class, e -> System.out.println("Invalid response from playerdb.co for " + name))
+                    .flatMap(uuid -> Mono.fromRunnable(() -> {
+                        System.out.println("Player " + name + " has id " + uuid.toString());
+                        this.partyMembers.put(name, uuid);
+                    }))
                     .subscribe();
         }
     }
 
-    private void removeNameFromList(String name)
+    private void removeNameFromList(@NotNull String name)
     {
         this.partyMembers.remove(name);
     }
@@ -205,11 +214,13 @@ public class PartyManager
         this.partyLeader = "";
     }
 
+    @NotNull
     public Tuple<String, UUID> getPartyLeader()
     {
         return new Tuple<>(this.partyLeader, this.partyMembers.get(this.partyLeader));
     }
 
+    @NotNull
     public Map<String, UUID> getPartyMembers()
     {
         return this.partyMembers;

@@ -1,10 +1,13 @@
 package com.github.grizzlt.hypixelstatsoverlay.overlay;
 
-import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.GuiOverlayBuilder;
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
-public class GuiOverlayEmpty implements IGuiOverlayComponent, GuiOverlayBuilder
+public class GuiOverlayEmpty implements IGuiOverlayComponent
 {
+    protected GuiOverlayEmpty() {}
+
     @Override
     public void prepareForDrawing() throws Exception
     {
@@ -31,9 +34,9 @@ public class GuiOverlayEmpty implements IGuiOverlayComponent, GuiOverlayBuilder
         return 0;
     }
 
-    @Override
-    public IGuiOverlayComponent build()
+    @Contract(value = " -> new", pure = true)
+    public static @NotNull GuiOverlayEmpty create()
     {
-        return this;
+        return new GuiOverlayEmpty();
     }
 }

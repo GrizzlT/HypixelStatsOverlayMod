@@ -2,36 +2,48 @@ package com.github.grizzlt.hypixelstatsoverlay.overlay;
 
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
 import net.minecraft.client.gui.Gui;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.concurrent.Callable;
 
 public class GuiOverlayBackgroundFill extends GuiOverlayBackgroundRectangle
 {
-
-    public GuiOverlayBackgroundFill(int color, int margin)
+    @Override
+    public void draw(@NotNull Vector2i offset, Vector2i size)
     {
-        super(color, margin);
+        Vector2i childSize = new Vector2i(this.getMaxWidth(size), this.getMaxHeight(size)).subtract(margin * 2, margin * 2);
+        Gui.drawRect(offset.x, offset.y, offset.x + size.x, offset.y + size.y, this.colorCache);
+        this.child.draw(offset.add(margin, margin), childSize);
     }
 
-    public GuiOverlayBackgroundFill(IGuiOverlayComponent child, int color, int margin)
+    @Contract(value = " -> new", pure = true)
+    public static @NotNull GuiOverlayBackgroundFill create()
     {
-        super(child, color, margin);
+        return new GuiOverlayBackgroundFill();
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i size)
+    public GuiOverlayBackgroundFill withChild(@NotNull IGuiOverlayComponent child)
     {
-        Vector2i childSize = new Vector2i(this.getMaxWidth(size), this.getMaxHeight(size)).substract(new Vector2i(margin * 2, margin * 2));
-        Gui.drawRect(offset.x, offset.y, offset.x + size.x, offset.y + size.y, this.color);
-        this.child.draw(offset.add(new Vector2i(margin, margin)), childSize);
+        return (GuiOverlayBackgroundFill)super.withChild(child);
     }
 
     @Override
-    public IGuiOverlayComponent build()
+    public GuiOverlayBackgroundFill withColor(int color)
     {
-        GuiOverlayBackgroundFill newObj = new GuiOverlayBackgroundFill(this.color, this.margin);
-        if (this.chain.isPresent())
-        {
-            newObj.setChild(this.chain.get().build());
-        }
-        return newObj;
+        return (GuiOverlayBackgroundFill)super.withColor(color);
+    }
+
+    @Override
+    public GuiOverlayBackgroundFill withColor(Callable<Integer> color)
+    {
+        return (GuiOverlayBackgroundFill)super.withColor(color);
+    }
+
+    @Override
+    public GuiOverlayBackgroundFill withMargin(int margin)
+    {
+        return (GuiOverlayBackgroundFill)super.withMargin(margin);
     }
 }

@@ -2,43 +2,50 @@ package com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars;
 
 import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
+import com.github.grizzlt.hypixelstatsoverlay.events.PlayerListUpdateEvent;
 import com.github.grizzlt.hypixelstatsoverlay.stats.IGameParser;
-import com.github.grizzlt.hypixelstatsoverlay.stats.parser.RequestWrapper;
+import com.github.grizzlt.hypixelstatsoverlay.util.JsonHelper;
 import com.github.grizzlt.hypixelstatsoverlay.util.ReflectionContainer;
-import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.PlayerReply;
-import com.github.grizzlt.shadowedLibs.net.hypixel.api.reply.StatusReply;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.hypixel.api.reply.PlayerReply;
+import net.hypixel.api.reply.StatusReply;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiPlayerTabOverlay;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.util.Tuple;
-import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import org.jetbrains.annotations.NotNull;
+import reactor.core.Disposable;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class BedwarsParser implements IGameParser
 {
     private final BedwarsGameGuiOverlay bwGameTabRenderer = new BedwarsGameGuiOverlay(this);
-    //private final BedwarsLobbyGuiOverlay bwLobbyTabRenderer = new BedwarsLobbyGuiOverlay(this);
 
-    /**
-     * main storage of the playerdata
-     */
-    private final Map<UUID, Tuple<RequestWrapper, BedwarsProfile>> playersInList = new HashMap<>();
+    private final ConcurrentMap<UUID, BedwarsProfile> playersInList = new ConcurrentHashMap<>();
+    private final List<Disposable> sentRequests = new ArrayList<>();
 
     private boolean isInLobby = false;
 
     @Override
-    public void onPlayerSwitchWorld(StatusReply statusReply, EntityJoinWorldEvent event)
+    public void onPlayerSwitchWorld(@NotNull StatusReply statusReply, EntityJoinWorldEvent event)
     {
         this.isInLobby = statusReply.getSession().getMode().equals("LOBBY"); //change isInLobby default to true
+
         this.playersInList.clear();
+        this.sentRequests.forEach(Disposable::dispose);
+        this.sentRequests.clear();
+
         System.out.println("In lobby? " + this.isInLobby);
     }
 
@@ -72,30 +79,30 @@ public class BedwarsParser implements IGameParser
     }
 
     @Override
-    public void onChatReceived(ClientChatReceivedEvent event)
+    public void registerEvents()
     {
-
+        MinecraftForge.EVENT_BUS.register(this);
     }
 
-    public void gatherPlayers(List<UUID> uuids)
+    @SubscribeEvent
+    public void onPlayerListUpdate(PlayerListUpdateEvent event)
+    {
+        this.bwGameTabRenderer.markDirty();
+    }
+
+    public void gatherPlayers(@NotNull List<UUID> uuids)
     {
         for (UUID id : uuids)
         {
             if (!this.playersInList.containsKey(id))
             {
-                BedwarsProfile profile = new BedwarsProfile();
-                RequestWrapper requestWrapper = new RequestWrapper(HypixelStatsOverlayMod.apiContainer.getAPI().handleHypixelAPIRequest(api ->
-                        api.getPlayerByUuid(id)
-                ), wrapper -> {
-                    JsonObject playerObject = ((PlayerReply)wrapper.getReply()).getPlayer();
-                    profile.level = getBwLevel(playerObject);
-                    profile.winstreak = getWinStreak(playerObject);
-                    profile.wlr = getWinLossRatio(playerObject);
-                    profile.fkdr = getFKDR(playerObject);
-                    profile.bblr = getBBLR(playerObject);
-                    profile.calculateScore();
-                });
-                this.playersInList.put(id, new Tuple<>(requestWrapper, profile));
+                System.out.println("Gathering stats for " + id.toString());
+                this.sentRequests.add(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getPlayerByUuid(id))
+                        .map(PlayerReply::getPlayer)
+                        .map(json -> new BedwarsProfile(getBwLevel(json), getWinStreak(json), getFKDR(json), getWinLossRatio(json), getBBLR(json)))
+                        .subscribe(profile -> this.playersInList.put(id, profile)));
+
+                this.playersInList.putIfAbsent(id, new BedwarsProfile());
             }
         }
     }
@@ -104,138 +111,131 @@ public class BedwarsParser implements IGameParser
     {
         public int level = -1;
         public int winstreak = -1;
-        public double fkdr = -2;
-        public double wlr = -2;
-        public double bblr = -2;
+        public double fkdr = -2.0;
+        public double wlr = -2.0;
+        public double bblr = -2.0;
 
         public double score = 1.0;
+
+        public BedwarsProfile() {}
+
+        public BedwarsProfile(int level, int ws, double fkdr, double wlr, double bblr)
+        {
+            this.level = level;
+            this.winstreak = ws;
+            this.fkdr = fkdr;
+            this.wlr = wlr;
+            this.bblr = bblr;
+
+            calculateScore();
+        }
 
         public void calculateScore()
         {
             double fkdrMax = Math.max(0, fkdr);
-            this.score = (10 + Math.max(level, 0)) * fkdrMax * fkdrMax * (winstreak > 0 ? winstreak * 0.625 : 1);
+            this.score = (10 + Math.max(level, 0)) * fkdrMax * fkdrMax * (winstreak > 1 ? winstreak * 1.625 : 1);
         }
     }
 
-    public Map<UUID, Tuple<RequestWrapper, BedwarsProfile>> getPlayerDataMap()
+    public Map<UUID, BedwarsProfile> getPlayerDataMap()
     {
         return this.playersInList;
     }
 
     /**
-     * returns the bedwars level of the player
-     *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
-     * @return bw level when found, otherwise -1, -2 when nicked
+     * @return BW level: -2 = nicked, -1 = unknown
      */
     private static int getBwLevel(JsonObject playerObject)
     {
         if (playerObject == null) return -2;
 
-        if (playerObject.has("achievements")) {
-            JsonObject achievementsObject = playerObject.getAsJsonObject("achievements");
-            if (achievementsObject.has("bedwars_level")) {
-                return achievementsObject.get("bedwars_level").getAsInt();
-            }
+        JsonElement bwLevelElement = JsonHelper.getObjectUsingPath(playerObject, "achievements.bedwars_level");
+        if (bwLevelElement != null) {
+            return bwLevelElement.getAsInt();
         }
         return -1;
     }
 
     /**
-     * returns the fkdr of the player
-     *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
-     * @return the fkdr when found, -1 when no final deaths, -2 when not found, -3 when nicked
+     * @return FKDR: -3 = nicked, -2 = unknown, -1 = no final deaths
      */
     private static double getFKDR(JsonObject playerObject)
     {
-        if (playerObject == null) return -3;
+        if (playerObject == null) return -3.0;
 
-        if (playerObject.has("stats")) {
-            JsonObject statsObj = playerObject.getAsJsonObject("stats");
-            if (statsObj.has("Bedwars")) {
-                JsonObject bwObj = statsObj.getAsJsonObject("Bedwars");
-                int fk = bwObj.get("final_kills_bedwars").getAsInt();
-                int fd = bwObj.get("final_deaths_bedwars").getAsInt();
-                if (fd != 0) {
-                    return (double)fk / (double)fd;
-                } else {
-                    return -1;
-                }
-            }
+        JsonElement finalDeathsObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.final_deaths_bedwars");
+        if (finalDeathsObj == null) {
+            return -1.0;
         }
-        return -2;
+        JsonElement finalKillsObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.final_kills_bedwars");
+        if (finalKillsObj == null) {
+            return -2.0;
+        }
+        int fk = finalKillsObj.getAsInt();
+        int fd = finalDeathsObj.getAsInt();
+        if (fd == 0) {
+            return -1.0;
+        }
+        return (double)fk / (double)fd;
     }
 
     /**
-     * returns the current winstreak of the player
-     *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
-     * @return the winstreak when found, otherwise -1, -2 when nicked
+     * @return WS: -2 = nicked, -1 = unknown
      */
     private static int getWinStreak(JsonObject playerObject)
     {
         if (playerObject == null) return -2;
 
-        if (playerObject.has("stats")) {
-            JsonObject statsObj = playerObject.getAsJsonObject("stats");
-            if (statsObj.has("Bedwars")) {
-                JsonObject bwObj = statsObj.getAsJsonObject("Bedwars");
-                return bwObj.get("winstreak").getAsInt();
-            }
+        JsonElement wsElement = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.winstreak");
+        if (wsElement == null) {
+            return -1;
         }
-        return -1;
+        return wsElement.getAsInt();
     }
 
     /**
-     * returns the win-loss ration of the player
-     *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
-     * @return the wlr when found, -1 when no losses, -2 when not found, -3 when nicked
+     * @return WLR: -3.0 = nicked, -2.0 = unknown, -1.0 = no losses
      */
     private static double getWinLossRatio(JsonObject playerObject)
     {
         if (playerObject == null) return -3;
 
-        if (playerObject.has("stats")) {
-            JsonObject statsObj = playerObject.getAsJsonObject("stats");
-            if (statsObj.has("Bedwars")) {
-                JsonObject bwObj = statsObj.getAsJsonObject("Bedwars");
-                int wins = bwObj.get("wins_bedwars").getAsInt();
-                int losses = bwObj.get("losses_bedwars").getAsInt();
-                if (losses != 0) {
-                    return (double)wins / (double)losses;
-                } else {
-                    return -1;
-                }
-            }
+        JsonElement lossesObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.losses_bedwars");
+        if (lossesObj == null) {
+            return -1.0;
         }
-        return -2;
+        JsonElement winsObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.wins_bedwars");
+        if (winsObj == null) {
+            return -2.0;
+        }
+        int wins = winsObj.getAsInt();
+        int losses = lossesObj.getAsInt();
+        if (losses == 0) {
+            return -1.0;
+        }
+        return (double)wins / (double)losses;
     }
 
     /**
-     * returns the beds-broken-beds-lost-ratio of the player
-     *
-     * @param playerObject the {@link JsonObject} received from {@link com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModLibrary}
-     * @return the bblr when found, -1 when no beds lost, -2 when not found, -3 when nicked
+     * @return BBLR: -3.0 = nicked, -2.0 = unknown, -1.0 = no beds lost
      */
     private static double getBBLR(JsonObject playerObject)
     {
         if (playerObject == null) return -3;
 
-        if (playerObject.has("stats")) {
-            JsonObject statsObj = playerObject.getAsJsonObject("stats");
-            if (statsObj.has("Bedwars")) {
-                JsonObject bwObj = statsObj.getAsJsonObject("Bedwars");
-                int bedsBroken = bwObj.get("beds_broken_bedwars").getAsInt();
-                int bedsLost = bwObj.get("beds_lost_bedwars").getAsInt();
-                if (bedsLost != 0) {
-                    return (double)bedsBroken / (double)bedsLost;
-                } else {
-                    return -1;
-                }
-            }
+        JsonElement lostObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.beds_lost_bedwars");
+        if (lostObj == null) {
+            return -1.0;
         }
-        return -2;
+        JsonElement brokenObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.beds_broken_bedwars");
+        if (brokenObj == null) {
+            return -2.0;
+        }
+        int lost = lostObj.getAsInt();
+        int broken = brokenObj.getAsInt();
+        if (lost == 0) {
+            return -1.0;
+        }
+        return (double)broken / (double)lost;
     }
 }

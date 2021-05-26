@@ -1,38 +1,31 @@
 package com.github.grizzlt.hypixelstatsoverlay.overlay;
 
-import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.GuiOverlayBuilder;
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.IChatComponent;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.concurrent.Callable;
 
-public class GuiOverlayTextElement implements IGuiOverlayComponent, GuiOverlayBuilder
+public class GuiOverlayTextElement implements IGuiOverlayComponent
 {
-    protected IChatComponent text = null;
-    protected Callable<IChatComponent> textCallable;
+    private IChatComponent textCache;
+    protected Callable<IChatComponent> text = null;
 
-    public GuiOverlayTextElement(IChatComponent text)
-    {
-        this(() -> text);
-    }
-
-    public GuiOverlayTextElement(Callable<IChatComponent> textCallableIn)
-    {
-        this.textCallable = textCallableIn;
-    }
+    protected GuiOverlayTextElement() {}
 
     @Override
     public void prepareForDrawing() throws Exception
     {
-        this.text = this.textCallable.call();
+        this.textCache = text.call();
     }
 
     @Override
-    public void draw(Vector2i offset, Vector2i size)
+    public void draw(Vector2i offset, @NotNull Vector2i size)
     {
-        List<String> lines = Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.text.getFormattedText(), size.x);
+        List<String> lines = Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.textCache.getFormattedText(), size.x);
         int marginTop = 0;
         for (String line : lines)
         {
@@ -44,20 +37,32 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent, GuiOverlayBu
     }
 
     @Override
-    public int getMaxWidth(Vector2i size)
+    public int getMaxWidth(@NotNull Vector2i size)
     {
-        return Math.min(size.x, Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.text.getFormattedText()));
+        return Math.min(size.x, Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.textCache.getFormattedText()));
     }
 
     @Override
-    public int getMaxHeight(Vector2i size)
+    public int getMaxHeight(@NotNull Vector2i size)
     {
-        return Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.text.getFormattedText(), size.x).size() * Minecraft.getMinecraft().fontRendererObj.FONT_HEIGHT - 1;
+        return Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.textCache.getFormattedText(), size.x).size() * Minecraft.getMinecraft().fontRendererObj.FONT_HEIGHT - 1;
     }
 
-    @Override
-    public IGuiOverlayComponent build()
+    @Contract(value = " -> new", pure = true)
+    public static @NotNull GuiOverlayTextElement create()
     {
-        return new GuiOverlayTextElement(this.textCallable);
+        return new GuiOverlayTextElement();
+    }
+
+    public GuiOverlayTextElement withText(@NotNull IChatComponent text)
+    {
+        this.text = () -> text;
+        return this;
+    }
+
+    public GuiOverlayTextElement withText(@NotNull Callable<IChatComponent> text)
+    {
+        this.text = text;
+        return this;
     }
 }

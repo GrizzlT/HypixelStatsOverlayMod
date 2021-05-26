@@ -1,7 +1,11 @@
 package com.github.grizzlt.hypixelstatsoverlay.util;
 
+import org.jetbrains.annotations.NotNull;
+
 public class Vector2i
 {
+    public static final Vector2i ZERO = new Vector2i(0, 0);
+
     public int x, y;
 
     public Vector2i(int x, int y)
@@ -20,13 +24,27 @@ public class Vector2i
         this.y = newY;
     }
 
-    public Vector2i add(Vector2i otherVec)
+    @NotNull
+    public Vector2i add(@NotNull Vector2i otherVec)
     {
         return new Vector2i(this.x + otherVec.x, this.y + otherVec.y);
     }
 
-    public Vector2i substract(Vector2i otherVec)
+    @NotNull
+    public Vector2i add(int x, int y)
+    {
+        return new Vector2i(this.x + x, this.y + y);
+    }
+
+    @NotNull
+    public Vector2i subtract(@NotNull Vector2i otherVec)
     {
         return new Vector2i(this.x - otherVec.x, this.y - otherVec.y);
+    }
+
+    @NotNull
+    public Vector2i subtract(int x, int y)
+    {
+        return new Vector2i(this.x - x, this.y - y);
     }
 }
