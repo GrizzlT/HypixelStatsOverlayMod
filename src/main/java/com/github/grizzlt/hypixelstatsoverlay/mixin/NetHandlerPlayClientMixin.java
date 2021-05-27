@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(NetHandlerPlayClient.class)
 public abstract class NetHandlerPlayClientMixin
 {
-    @Inject(method = "handlePlayerListItem", at = @At("HEAD"))
-    public void onProcessPacket(S38PacketPlayerListItem packetIn, CallbackInfo ci)
+    @Inject(method = "handlePlayerListItem", at = @At("RETURN"))
+    public void onHandlePlayerListItem(S38PacketPlayerListItem packetIn, CallbackInfo ci)
     {
         if (packetIn.getAction() == S38PacketPlayerListItem.Action.ADD_PLAYER || packetIn.getAction() == S38PacketPlayerListItem.Action.REMOVE_PLAYER)
         {

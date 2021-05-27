@@ -25,6 +25,8 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent
     @Override
     public void draw(Vector2i offset, @NotNull Vector2i size)
     {
+        if (this.textCache == null) return;
+
         List<String> lines = Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.textCache.getFormattedText(), size.x);
         int marginTop = 0;
         for (String line : lines)
@@ -39,12 +41,14 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent
     @Override
     public int getMaxWidth(@NotNull Vector2i size)
     {
+        if (this.textCache == null) return 0;
         return Math.min(size.x, Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.textCache.getFormattedText()));
     }
 
     @Override
     public int getMaxHeight(@NotNull Vector2i size)
     {
+        if (this.textCache == null) return 0;
         return Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.textCache.getFormattedText(), size.x).size() * Minecraft.getMinecraft().fontRendererObj.FONT_HEIGHT - 1;
     }
 

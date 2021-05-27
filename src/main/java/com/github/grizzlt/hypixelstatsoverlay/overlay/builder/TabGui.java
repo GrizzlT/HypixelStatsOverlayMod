@@ -115,4 +115,10 @@ public abstract class TabGui
     {
         return GuiOverlayStackedElements.create();
     }
+
+    @Contract(pure = true)
+    public static @NotNull GuiWrapper wrapper()
+    {
+        return GuiWrapper.create();
+    }
 }

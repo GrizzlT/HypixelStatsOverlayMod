@@ -5,7 +5,6 @@ import com.github.grizzlt.hypixelstatsoverlay.mixin.GuiPlayerTabOverlayMixin;
 import com.github.grizzlt.hypixelstatsoverlay.overlay.IGuiOverlayComponent;
 import com.github.grizzlt.hypixelstatsoverlay.overlay.builder.TabGui;
 import com.github.grizzlt.hypixelstatsoverlay.overlay.grid.GuiOverlayElementGrid;
-import com.github.grizzlt.hypixelstatsoverlay.util.TabListHeaderFooterAccess;
 import com.github.grizzlt.hypixelstatsoverlay.util.Vector2i;
 import com.google.common.collect.ComparisonChain;
 import net.minecraft.client.Minecraft;
@@ -56,11 +55,11 @@ public class BedwarsGameGuiOverlay
     {
         root = TabGui.centerHorizontal().withChild(TabGui.background(Integer.MIN_VALUE, 1)
                 .withChild(TabGui.verticalList()
-                        .withChild(TabGui.centerHorizontal(TabGui.text(() -> ((TabListHeaderFooterAccess)Minecraft.getMinecraft().ingameGUI.getTabList()).getHeader())))
+                        .withChild(TabGui.centerHorizontal(TabGui.text(() -> ((GuiPlayerTabOverlayMixin)Minecraft.getMinecraft().ingameGUI.getTabList()).getHeader())))
                         .withChild(TabGui.spacing().withHeight(2))
-                        .withChild(TabGui.centerHorizontal(playerList))
+                        .withChild(TabGui.centerHorizontal(TabGui.wrapper().withChild(() -> this.playerList)))
                         .withChild(TabGui.spacing().withHeight(2))
-                        .withChild(TabGui.centerHorizontal(TabGui.text(() -> ((TabListHeaderFooterAccess)Minecraft.getMinecraft().ingameGUI.getTabList()).getFooter())))
+                        .withChild(TabGui.centerHorizontal(TabGui.text(() -> ((GuiPlayerTabOverlayMixin)Minecraft.getMinecraft().ingameGUI.getTabList()).getFooter())))
                 )
         );
     }
