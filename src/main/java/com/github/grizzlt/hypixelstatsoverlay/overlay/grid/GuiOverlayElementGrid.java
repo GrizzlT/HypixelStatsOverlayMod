@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.stream.IntStream;
 
+@SuppressWarnings("UnusedReturnValue")
 public class GuiOverlayElementGrid implements IGuiOverlayComponent
 {
     protected IGuiOverlayComponent[] children;
@@ -34,24 +35,25 @@ public class GuiOverlayElementGrid implements IGuiOverlayComponent
     @Override
     public void draw(Vector2i offset, Vector2i size)
     {
-        int offsetX = 0;
         int[] heights = new int[this.dimension.y];
         for (int i = 0; i < this.dimension.y; ++i)
         {
             heights[i] = getRowMaxHeight(i, size);
         }
-        for (int i = 0; i < this.dimension.x; ++i)
+
+        int offsetX = 0;
+        for (int x = 0; x < this.dimension.x; ++x)
         {
             int offsetY = 0;
-            int maxWidth = this.getColumnMaxWidth(i, size);
-            for (int j = 0; j < this.dimension.y; ++j)
+            int maxWidth = this.getColumnMaxWidth(x, size);
+            for (int y = 0; y < this.dimension.y; ++y)
             {
-                this.children[j * this.dimension.x + i].draw(offset.add(new Vector2i(offsetX, offsetY)), new Vector2i(maxWidth, heights[j]));
-                offsetY += heights[j];
-                if (j < this.dimension.y - 1) offsetY += rowSpacing[j];
+                this.children[this.getArrayIndexFromPos(x, y)].draw(offset.add(new Vector2i(offsetX, offsetY)), new Vector2i(maxWidth, heights[y]));
+                offsetY += heights[y];
+                if (y < this.dimension.y - 1) offsetY += rowSpacing[y];
             }
             offsetX += maxWidth;
-            if (i < this.dimension.x - 1) offsetX += columnSpacing[i];
+            if (x < this.dimension.x - 1) offsetX += columnSpacing[x];
         }
     }
 
@@ -72,9 +74,13 @@ public class GuiOverlayElementGrid implements IGuiOverlayComponent
         int maxWidth = 0;
         for (int i = 0; i < dimension.y; ++i)
         {
-            maxWidth = Math.max(maxWidth, this.children[i * this.dimension.x + column].getMaxWidth(size));
+            maxWidth = Math.max(maxWidth, this.children[this.getArrayIndexFromPos(column, i)].getMaxWidth(size));
         }
         return maxWidth;
+    }
+
+    protected int getArrayIndexFromPos(int x, int y) {
+        return y * this.dimension.x + x;
     }
 
     @Override
@@ -94,7 +100,7 @@ public class GuiOverlayElementGrid implements IGuiOverlayComponent
         int maxHeight = 0;
         for (int i = 0; i < dimension.x; ++i)
         {
-            maxHeight = Math.max(maxHeight, this.children[row * this.dimension.x + i].getMaxHeight(size));
+            maxHeight = Math.max(maxHeight, this.children[this.getArrayIndexFromPos(i, row)].getMaxHeight(size));
         }
         return maxHeight;
     }
@@ -147,7 +153,7 @@ public class GuiOverlayElementGrid implements IGuiOverlayComponent
      */
     public GuiOverlayElementGrid withChild(int row, int column, @NotNull IGuiOverlayComponent child)
     {
-        this.children[row * this.dimension.x + column] = child;
+        this.children[this.getArrayIndexFromPos(column, row)] = child;
         return this;
     }
 }

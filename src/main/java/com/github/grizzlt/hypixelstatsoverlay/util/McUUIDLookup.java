@@ -24,7 +24,7 @@ public class McUUIDLookup
                 .map(parser::parse).map(JsonElement::getAsJsonObject)
                 .map(json -> {
                     JsonElement codeObj = json.get("code");
-                    if (codeObj != null && codeObj.getAsString().equals("player.found")) {
+                    if (codeObj != null && !codeObj.getAsString().equals("player.found")) {
                         throw new IllegalArgumentException("Request was unsuccessful!");
                     }
                     JsonElement idObj = JsonHelper.getObjectUsingPath(json, "data.player.id");

@@ -178,7 +178,7 @@ public class BedwarsGameGuiOverlay
 
     public int getPlayerNameColor(BedwarsParser.BedwarsProfile profile)
     {
-        return profile.fkdr == -3 ? ((89 & 0xFF) << 24) | ((0xFF) << 16) | ((13 & 0xFF) << 8)  | ((13 & 0xFF)): 553648127;
+        return profile.fkdr == -3 ? ((89 & 0xFF) << 24) | ((0xFF) << 16) | ((13 & 0xFF) << 8)  | ((13 & 0xFF)) : 553648127;
     }
 
     private String getPlayerName(NetworkPlayerInfo info)
@@ -215,12 +215,12 @@ public class BedwarsGameGuiOverlay
 
         grid.withRow(row,
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
-                        .withChild(TabGui.spacing().withWidth(1)))
+                        .withChild(TabGui.spacing().withWidth(1))
                         .withChild(TabGui.text(() -> {
                             BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
                             return new ChatComponentText(profile.level == -1 || profile.level == -2 ? " [?✫] " : (" [" + profile.level + "✫] "));
                         }))
-                        .withChild(TabGui.spacing().withWidth(1)),
+                        .withChild(TabGui.spacing().withWidth(1))),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
                         .withChild(TabGui.stacked()
                                 .withChild(TabGui.texturedRect(playerInfo.getLocationSkin(), vector8x8, vector8x8, vector8x8, new Vector2i(64, 64)))
