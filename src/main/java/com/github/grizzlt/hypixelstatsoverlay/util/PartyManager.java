@@ -78,6 +78,7 @@ public class PartyManager
         m = selfJoinedPartyPattern.matcher(message);
         if (m.find())
         {
+            this.addNameToList(Minecraft.getMinecraft().thePlayer.getName());
             this.addNameToList(m.group("name"));
             this.partyLeader = m.group("name");
             return;

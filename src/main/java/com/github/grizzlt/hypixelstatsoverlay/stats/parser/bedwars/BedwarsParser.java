@@ -98,26 +98,34 @@ public class BedwarsParser implements IGameParser
             {
                 System.out.println("Gathering stats for " + id.toString());
                 this.sentRequests.add(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getPlayerByUuid(id))
+                        .filter(player -> player.getPlayer() != null)
                         .map(PlayerReply::getPlayer)
                         .map(json -> new BedwarsProfile(getBwLevel(json), getWinStreak(json), getFKDR(json), getWinLossRatio(json), getBBLR(json)))
+                        .defaultIfEmpty(BedwarsProfile.NICKED)
                         .subscribe(profile -> this.playersInList.put(id, profile)));
 
-                this.playersInList.putIfAbsent(id, new BedwarsProfile());
+                this.playersInList.putIfAbsent(id, new BedwarsProfile(false));
             }
         }
     }
 
     public static class BedwarsProfile
     {
+        public static BedwarsProfile NICKED = new BedwarsProfile(true);
+
         public int level = -1;
         public int winstreak = -1;
         public double fkdr = -2.0;
         public double wlr = -2.0;
         public double bblr = -2.0;
 
+        public boolean isNicked;
         public double score = 1.0;
 
-        public BedwarsProfile() {}
+        public BedwarsProfile(boolean nicked)
+        {
+            this.isNicked = nicked;
+        }
 
         public BedwarsProfile(int level, int ws, double fkdr, double wlr, double bblr)
         {
@@ -143,12 +151,10 @@ public class BedwarsParser implements IGameParser
     }
 
     /**
-     * @return BW level: -2 = nicked, -1 = unknown
+     * @return BW level: -1 = unknown
      */
     private static int getBwLevel(JsonObject playerObject)
     {
-        if (playerObject == null) return -2;
-
         JsonElement bwLevelElement = JsonHelper.getObjectUsingPath(playerObject, "achievements.bedwars_level");
         if (bwLevelElement != null) {
             return bwLevelElement.getAsInt();
@@ -157,12 +163,10 @@ public class BedwarsParser implements IGameParser
     }
 
     /**
-     * @return FKDR: -3 = nicked, -2 = unknown, -1 = no final deaths
+     * @return FKDR: -2 = unknown, -1 = no final deaths
      */
     private static double getFKDR(JsonObject playerObject)
     {
-        if (playerObject == null) return -3.0;
-
         JsonElement finalDeathsObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.final_deaths_bedwars");
         if (finalDeathsObj == null) {
             return -1.0;
@@ -180,12 +184,10 @@ public class BedwarsParser implements IGameParser
     }
 
     /**
-     * @return WS: -2 = nicked, -1 = unknown
+     * @return WS: -1 = unknown
      */
     private static int getWinStreak(JsonObject playerObject)
     {
-        if (playerObject == null) return -2;
-
         JsonElement wsElement = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.winstreak");
         if (wsElement == null) {
             return -1;
@@ -194,12 +196,10 @@ public class BedwarsParser implements IGameParser
     }
 
     /**
-     * @return WLR: -3.0 = nicked, -2.0 = unknown, -1.0 = no losses
+     * @return WLR: -2.0 = unknown, -1.0 = no losses
      */
     private static double getWinLossRatio(JsonObject playerObject)
     {
-        if (playerObject == null) return -3;
-
         JsonElement lossesObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.losses_bedwars");
         if (lossesObj == null) {
             return -1.0;
@@ -217,12 +217,10 @@ public class BedwarsParser implements IGameParser
     }
 
     /**
-     * @return BBLR: -3.0 = nicked, -2.0 = unknown, -1.0 = no beds lost
+     * @return BBLR: -2.0 = unknown, -1.0 = no beds lost
      */
     private static double getBBLR(JsonObject playerObject)
     {
-        if (playerObject == null) return -3;
-
         JsonElement lostObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.beds_lost_bedwars");
         if (lostObj == null) {
             return -1.0;

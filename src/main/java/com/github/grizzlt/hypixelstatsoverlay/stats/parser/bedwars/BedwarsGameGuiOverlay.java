@@ -168,7 +168,7 @@ public class BedwarsGameGuiOverlay
         BedwarsParser.BedwarsProfile profile = getBwProfile(networkPlayerInfoIn);
         String suffix = "";
         if (profile != null) {
-            if (profile.fkdr == -3)
+            if (profile.isNicked)
             {
                 suffix = " (NICK)";
             }
@@ -178,7 +178,7 @@ public class BedwarsGameGuiOverlay
 
     public int getPlayerNameColor(BedwarsParser.BedwarsProfile profile)
     {
-        return profile.fkdr == -3 ? ((89 & 0xFF) << 24) | ((0xFF) << 16) | ((13 & 0xFF) << 8)  | ((13 & 0xFF)) : 553648127;
+        return profile != null && profile.isNicked ? ((89 & 0xFF) << 24) | ((0xFF) << 16) | ((13 & 0xFF) << 8)  | ((13 & 0xFF)) : 553648127;
     }
 
     private String getPlayerName(NetworkPlayerInfo info)
@@ -218,7 +218,7 @@ public class BedwarsGameGuiOverlay
                         .withChild(TabGui.spacing().withWidth(1))
                         .withChild(TabGui.text(() -> {
                             BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
-                            return new ChatComponentText(profile.level == -1 || profile.level == -2 ? " [?✫] " : (" [" + profile.level + "✫] "));
+                            return new ChatComponentText(profile.level == -1 ? " [?✫] " : (" [" + profile.level + "✫] "));
                         }))
                         .withChild(TabGui.spacing().withWidth(1))),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
@@ -242,15 +242,15 @@ public class BedwarsGameGuiOverlay
                 })).withChild(TabGui.spacing().withWidth(3))),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
                     BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
-                    return new ChatComponentText(profile.winstreak <= -1 ? "?" : String.valueOf(profile.winstreak));
+                    return new ChatComponentText(profile.winstreak == -1 ? "?" : String.valueOf(profile.winstreak));
                 })).withChild(TabGui.spacing().withWidth(3))),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
                     BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
-                    return new ChatComponentText(profile.bblr < -2.8 ? "?" : profile.bblr < -0.8 ? "NaN" : this.df.format(profile.bblr));
+                    return new ChatComponentText(profile.bblr < -1.8 ? "?" : profile.bblr < -0.8 ? "NaN" : this.df.format(profile.bblr));
                 })).withChild(TabGui.spacing().withWidth(3))),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
                     BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
-                    return new ChatComponentText(this.df.format(profile.score / this.bwParser.getPlayerDataMap().get(Minecraft.getMinecraft().thePlayer.getUniqueID()).score));
+                    return new ChatComponentText(profile.isNicked ? "?" : this.df.format(profile.score / this.bwParser.getPlayerDataMap().get(Minecraft.getMinecraft().thePlayer.getUniqueID()).score));
                 })).withChild(TabGui.spacing().withWidth(3))),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
                         .withChild(TabGui.text(() -> {
@@ -282,9 +282,10 @@ public class BedwarsGameGuiOverlay
 
             return ComparisonChain.start()
                     .compareTrueFirst(o1.getGameType() != WorldSettings.GameType.SPECTATOR, o2.getGameType() != WorldSettings.GameType.SPECTATOR)
-                    .compareTrueFirst(bwProfile1.fkdr == -3, bwProfile2.fkdr == -3) // then get the nicked players
+                    .compareTrueFirst(bwProfile1.isNicked, bwProfile2.isNicked) // then get the nicked players
                     .compare(scoreplayerteam != null ? scoreplayerteam.getRegisteredName() : "", scoreplayerteam1 != null ? scoreplayerteam1.getRegisteredName() : "")
                     .compare(bwProfile2.score, bwProfile1.score)
+                    .compare(bwProfile2.fkdr, bwProfile1.fkdr)
                     .compare(o1.getGameProfile().getName(), o2.getGameProfile().getName())
                     .result();
         }
@@ -304,8 +305,9 @@ public class BedwarsGameGuiOverlay
             return ComparisonChain.start()
                     .compareTrueFirst(HypixelStatsOverlayMod.instance.getPartyManager().getPartyLeader().getSecond().equals(o1.getGameProfile().getId()), HypixelStatsOverlayMod.instance.getPartyManager().getPartyLeader().getSecond().equals(o2.getGameProfile().getId()))
                     .compareTrueFirst(o1.getGameType() != WorldSettings.GameType.SPECTATOR, o2.getGameType() != WorldSettings.GameType.SPECTATOR)
-                    .compareTrueFirst(bwProfile1.fkdr == -3, bwProfile2.fkdr == -3) // then get the nicked players
+                    .compareTrueFirst(bwProfile1.isNicked, bwProfile2.isNicked) // then get the nicked players
                     .compare(bwProfile2.score, bwProfile1.score)
+                    .compare(bwProfile2.fkdr, bwProfile1.fkdr)
                     .compare(o1.getGameProfile().getName(), o2.getGameProfile().getName())
                     .result();
         }
