@@ -59,7 +59,7 @@ dependencies {
     }
 
     compile 'com.github.GrizzlT:ServerBasedClientModLibrary:1.8.9-SNAPSHOT'
-    provided 'com.github.grizzlt.hypixel-public-api:hypixel-public-api-modapi:2.0.0'
+    provided 'com.github.GrizzlT:HypixelPublicAPIMod:v2.1.0-library'
 
     provided 'org.jetbrains:annotations:21.0.1'
 }
