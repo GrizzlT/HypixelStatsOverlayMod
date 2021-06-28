@@ -16,6 +16,9 @@ To make use of this mod's playerlist, you'll need to bind your preferred key to 
 ## Features
 
 Currently only `Bedwars` (overall stats) is supported!
+
 More expansion coming soon!
+
+For live updates: visit this mod's [trello board](https://trello.com/b/K2q80g1o).
 
 > Written with [StackEdit](https://stackedit.io/).
