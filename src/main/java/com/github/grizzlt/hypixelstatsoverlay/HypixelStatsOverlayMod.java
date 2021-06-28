@@ -8,15 +8,24 @@ import com.github.grizzlt.hypixelstatsoverlay.events.RenderOverlayEventHandler;
 import com.github.grizzlt.hypixelstatsoverlay.stats.GameParsers;
 import com.github.grizzlt.hypixelstatsoverlay.util.PartyManager;
 import com.github.grizzlt.serverbasedmodlibrary.ServerBasedRegisterUtil;
+import net.minecraft.client.Minecraft;
+import net.minecraft.event.ClickEvent;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatStyle;
+import net.minecraftforge.common.ForgeVersion;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-@Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME)
+@Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME, clientSideOnly = true, updateJSON = "https://github.com/GrizzlT/HypixelStatsOverlayMod/raw/master/updater/updater.json")
 public class HypixelStatsOverlayMod
 {
     private final HypixelAPIReceiver apiContainer = new HypixelAPIReceiver();
@@ -47,8 +56,24 @@ public class HypixelStatsOverlayMod
         GameParsers.registerGameParsers();
 
         MinecraftForge.EVENT_BUS.register(apiContainer);
+        MinecraftForge.EVENT_BUS.register(this);
 
         KeyBindManager.init();
+    }
+
+    @SubscribeEvent
+    public void onJoinServer(FMLNetworkEvent.ClientConnectedToServerEvent event)
+    {
+        ModContainer modContainer = Loader.instance().getIndexedModList().get(Reference.MOD_ID);
+        ForgeVersion.CheckResult result = ForgeVersion.getResult(modContainer);
+        if (result.status == ForgeVersion.Status.FAILED) {
+            System.out.println("Update checker failed to verify!");
+        } else if (result.status == ForgeVersion.Status.UP_TO_DATE) {
+            System.out.println("Mod is up do date!");
+        } else if (result.status == ForgeVersion.Status.OUTDATED) {
+            System.out.println("New mod is available!");
+            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("A new version of the HypixelStatsOverlayMod is out!").appendSibling(new ChatComponentText(" (link to update)").setChatStyle(new ChatStyle().setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, result.url)))));
+        }
     }
 
     @NotNull

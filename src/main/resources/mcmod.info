@@ -6,7 +6,6 @@
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "https://github.com/GrizzlT/HypixelStatsOverlayMod",
-  "updateJSON": "https://github.com/GrizzlT/HypixelStatsOverlayMod/raw/master/updater/updater.json",
   "authorList": ["GrizzlT"],
   "credits": "The Forge and FML guys and Hypixel PublicAPI, for making this possible\n, cultar, TinyShisu and Ethanos420 for being guinea pigs <3",
   "logoFile": "",
