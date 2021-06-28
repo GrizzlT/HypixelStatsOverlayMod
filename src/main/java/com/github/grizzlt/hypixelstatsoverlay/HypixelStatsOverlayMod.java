@@ -9,11 +9,14 @@ import com.github.grizzlt.hypixelstatsoverlay.stats.GameParsers;
 import com.github.grizzlt.hypixelstatsoverlay.util.PartyManager;
 import com.github.grizzlt.serverbasedmodlibrary.ServerBasedRegisterUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.event.ClickEvent;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatStyle;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.common.ForgeVersion;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.ModContainer;
@@ -33,6 +36,8 @@ public class HypixelStatsOverlayMod
     private final PartyManager partyManager = new PartyManager();
 
     private final ServerBasedRegisterUtil serverBasedRegisterUtil = new ServerBasedRegisterUtil(address -> address.getHostName().contains("hypixel.net"));
+
+    private boolean isConnectingToServer = false;
 
     @Mod.Instance
     public static HypixelStatsOverlayMod instance;
@@ -64,6 +69,17 @@ public class HypixelStatsOverlayMod
     @SubscribeEvent
     public void onJoinServer(FMLNetworkEvent.ClientConnectedToServerEvent event)
     {
+        isConnectingToServer = true;
+    }
+
+    @SubscribeEvent
+    public void onEntityJoinWorld(EntityJoinWorldEvent event) {
+        if (!(event.entity instanceof EntityPlayer)) return;
+        EntityPlayer player = (EntityPlayer)event.entity;
+        if (!player.getUniqueID().equals(Minecraft.getMinecraft().thePlayer.getUniqueID())) return;
+        if (!isConnectingToServer) return;
+        isConnectingToServer = false;
+
         ModContainer modContainer = Loader.instance().getIndexedModList().get(Reference.MOD_ID);
         ForgeVersion.CheckResult result = ForgeVersion.getResult(modContainer);
         if (result.status == ForgeVersion.Status.FAILED) {
@@ -72,7 +88,12 @@ public class HypixelStatsOverlayMod
             System.out.println("Mod is up do date!");
         } else if (result.status == ForgeVersion.Status.OUTDATED) {
             System.out.println("New mod is available!");
-            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("A new version of the HypixelStatsOverlayMod is out!").appendSibling(new ChatComponentText(" (link to update)").setChatStyle(new ChatStyle().setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, result.url)))));
+            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("A ")
+                    .appendSibling(new ChatComponentText("new version")
+                            .setChatStyle(new ChatStyle()
+                                    .setColor(EnumChatFormatting.BLUE)
+                                    .setUnderlined(true).setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, result.url))))
+                    .appendSibling(new ChatComponentText(" of the HypixelStatsOverlayMod is available!")));
         }
     }
 
