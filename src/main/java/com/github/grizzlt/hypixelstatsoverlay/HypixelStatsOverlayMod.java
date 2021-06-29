@@ -24,6 +24,8 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -41,6 +43,7 @@ public class HypixelStatsOverlayMod
 
     @Mod.Instance
     public static HypixelStatsOverlayMod instance;
+    public static final Logger LOGGER = LogManager.getLogger();
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event)

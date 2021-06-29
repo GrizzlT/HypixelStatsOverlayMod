@@ -7,7 +7,7 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
 public interface IGameParser
 {
-    void onPlayerSwitchWorld(StatusReply statusReply, EntityJoinWorldEvent event);
+    void onPlayerSwitchWorld(StatusReply statusReply);
 
     void onRenderGameOverlayEvent(RenderGameOverlayEvent event);
 

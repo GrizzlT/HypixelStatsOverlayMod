@@ -35,26 +35,21 @@ public class GameParsers
         return PARSERS.get(this.currentGameType.get());
     }
 
-    @SubscribeEvent
-    public void onPlayerJoinWorld(EntityJoinWorldEvent event)
+    public void onPlayerChangeServerWorld()
     {
-        if (!(event.entity instanceof EntityPlayer)) return;
-        EntityPlayer player = (EntityPlayer)event.entity;
-        if (!player.getUniqueID().equals(Minecraft.getMinecraft().thePlayer.getUniqueID())) return;
-
         if (this.prevRequest != null) {
             this.prevRequest.dispose();
         }
 
         System.out.println("Sent status request!");
-        this.prevRequest = HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getStatus(player.getUniqueID()))
+        this.prevRequest = HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getStatus(Minecraft.getMinecraft().thePlayer.getUniqueID()))
                 .flatMap(statusReply -> Mono.fromRunnable(() ->{
                     System.out.println("Status request came back!");
 
                     ServerType serverType = statusReply.getSession().getServerType();
                     IGameParser gameParser = PARSERS.get(serverType);
                     if (gameParser != null) {
-                        gameParser.onPlayerSwitchWorld(statusReply, event);
+                        gameParser.onPlayerSwitchWorld(statusReply);
                     }
 
                     this.currentGameType.set(serverType);

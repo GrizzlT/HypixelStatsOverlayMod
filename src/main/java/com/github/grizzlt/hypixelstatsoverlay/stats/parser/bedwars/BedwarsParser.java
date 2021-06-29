@@ -38,7 +38,7 @@ public class BedwarsParser implements IGameParser
     private boolean isInLobby = false;
 
     @Override
-    public void onPlayerSwitchWorld(@NotNull StatusReply statusReply, EntityJoinWorldEvent event)
+    public void onPlayerSwitchWorld(@NotNull StatusReply statusReply)
     {
         this.isInLobby = statusReply.getSession().getMode().equals("LOBBY"); //change isInLobby default to true
 
