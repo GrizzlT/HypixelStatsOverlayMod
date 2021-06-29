@@ -9,7 +9,8 @@
     "defaultRequire": 1
   },
   "mixins": [
-    "NetHandlerPlayClientMixin",
-    "GuiPlayerTabOverlayMixin"
+    "FMLHandshakeMessageMixin",
+    "GuiPlayerTabOverlayMixin",
+    "NetHandlerPlayClientMixin"
   ]
 }
