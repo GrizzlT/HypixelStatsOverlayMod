@@ -188,7 +188,7 @@ public class BedwarsGameGuiOverlay
 
     private BedwarsParser.BedwarsProfile getBwProfile(NetworkPlayerInfo playerInfo)
     {
-        return this.bwParser.getPlayerDataMap().get(playerInfo.getGameProfile().getId());
+        return this.bwParser.getPlayerDataMap().getOrDefault(playerInfo.getGameProfile().getId(), new BedwarsParser.BedwarsProfile(false));
     }
 
     private void createTitles(GuiOverlayElementGrid grid)
@@ -251,19 +251,19 @@ public class BedwarsGameGuiOverlay
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList().withChild(TabGui.text(() -> {
                     BedwarsParser.BedwarsProfile profile = getBwProfile(playerInfo);
                     return new ChatComponentText(profile.isNicked ? "?" : this.df.format(profile.score / this.bwParser.getPlayerDataMap().get(Minecraft.getMinecraft().thePlayer.getUniqueID()).score));
-                })).withChild(TabGui.spacing().withWidth(3))),
+                })).withChild(TabGui.spacing().withWidth(5))),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
                         .withChild(TabGui.text(() -> {
                             if (objective == null || playerInfo.getGameType() == WorldSettings.GameType.SPECTATOR) return new ChatComponentText("");
                             int score = objective.getScoreboard().getValueFromObjective(playerInfo.getGameProfile().getName(), objective).getScorePoints();
                             return new ChatComponentText(EnumChatFormatting.YELLOW + String.valueOf(score));
-                        })).withChild(TabGui.spacing().withWidth(1))
+                        })).withChild(TabGui.spacing().withWidth(2))
                 ),
                 TabGui.fill(backgroundColor).withChild(TabGui.horizontalList()
                         .withChild(TabGui.text(() -> {
                             int ping = playerInfo.getResponseTime();
                             return new ChatComponentText((ping > 600 ? EnumChatFormatting.DARK_RED.toString() : ping > 300 ? EnumChatFormatting.RED.toString() : ping > 150 ? EnumChatFormatting.DARK_GREEN.toString() : EnumChatFormatting.GREEN.toString()) + (playerInfo.getResponseTime() == 0 ? "?" : playerInfo.getResponseTime()));
-                        })).withChild(TabGui.spacing().withWidth(1)))
+                        })).withChild(TabGui.spacing().withWidth(2)))
         );
     }
 
