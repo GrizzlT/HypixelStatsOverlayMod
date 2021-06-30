@@ -2,15 +2,12 @@ package com.github.grizzlt.hypixelstatsoverlay.stats;
 
 import com.github.grizzlt.hypixelpublicapi.error.PublicAPIKeyMissingException;
 import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
-import com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars.BedwarsParser;
+import com.github.grizzlt.hypixelstatsoverlay.stats.bedwars.BedwarsParser;
 import net.hypixel.api.data.type.GameType;
 import net.hypixel.api.data.type.LobbyType;
 import net.hypixel.api.data.type.ServerType;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentText;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 

@@ -1,9 +1,10 @@
-package com.github.grizzlt.hypixelstatsoverlay.stats.parser.bedwars;
+package com.github.grizzlt.hypixelstatsoverlay.stats.bedwars;
 
 import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerListUpdateEvent;
 import com.github.grizzlt.hypixelstatsoverlay.stats.IGameParser;
+import com.github.grizzlt.hypixelstatsoverlay.stats.gui.IPlayerGameData;
 import com.github.grizzlt.hypixelstatsoverlay.util.JsonHelper;
 import com.github.grizzlt.hypixelstatsoverlay.util.ReflectionContainer;
 import com.google.gson.JsonElement;
@@ -16,7 +17,6 @@ import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.Disposable;
@@ -42,9 +42,9 @@ public class BedwarsParser implements IGameParser
     {
         this.isInLobby = statusReply.getSession().getMode().equals("LOBBY"); //change isInLobby default to true
 
-        this.playersInList.clear();
         this.sentRequests.forEach(Disposable::dispose);
         this.sentRequests.clear();
+        this.playersInList.clear();
 
         System.out.println("In lobby? " + this.isInLobby);
     }
@@ -68,7 +68,7 @@ public class BedwarsParser implements IGameParser
                 return;
             }
 
-            this.bwGameTabRenderer.renderPlayerList(width, scoreboard, scoreObjective);
+            this.bwGameTabRenderer.renderPlayerList(width, scoreObjective);
         } else {
             try {
                 ((GuiPlayerTabOverlay)ReflectionContainer.guiTabOverlayField.get(Minecraft.getMinecraft().ingameGUI)).updatePlayerList(false);
@@ -90,26 +90,22 @@ public class BedwarsParser implements IGameParser
         this.bwGameTabRenderer.markDirty();
     }
 
-    public void gatherPlayers(@NotNull List<UUID> uuids)
+    public void lookupPlayer(UUID playerId)
     {
-        for (UUID id : uuids)
+        if (!this.playersInList.containsKey(playerId))
         {
-            if (!this.playersInList.containsKey(id))
-            {
-                System.out.println("Gathering stats for " + id.toString());
-                this.sentRequests.add(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getPlayerByUuid(id))
-                        .filter(player -> player.getPlayer() != null)
-                        .map(PlayerReply::getPlayer)
-                        .map(json -> new BedwarsProfile(getBwLevel(json), getWinStreak(json), getFKDR(json), getWinLossRatio(json), getBBLR(json)))
-                        .defaultIfEmpty(BedwarsProfile.NICKED)
-                        .subscribe(profile -> this.playersInList.put(id, profile)));
-
-                this.playersInList.putIfAbsent(id, new BedwarsProfile(false));
-            }
+            System.out.println("Gathering stats for " + playerId.toString());
+            this.playersInList.put(playerId, new BedwarsProfile(false));
+            this.sentRequests.add(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getPlayerByUuid(playerId))
+                    .filter(player -> player.getPlayer() != null)
+                    .map(PlayerReply::getPlayer)
+                    .map(json -> new BedwarsProfile(getBwLevel(json), getWinStreak(json), getFKDR(json), getWinLossRatio(json), getBBLR(json)))
+                    .defaultIfEmpty(BedwarsProfile.NICKED)
+                    .subscribe(profile -> this.playersInList.put(playerId, profile)));
         }
     }
 
-    public static class BedwarsProfile
+    public static class BedwarsProfile implements IPlayerGameData
     {
         public static BedwarsProfile NICKED = new BedwarsProfile(true);
 
@@ -142,6 +138,12 @@ public class BedwarsParser implements IGameParser
         {
             double fkdrMax = Math.max(0, fkdr);
             this.score = (10 + Math.max(level, 0)) * fkdrMax * fkdrMax * (winstreak > 1 ? winstreak * 1.625 : 1);
+        }
+
+        @Override
+        public boolean isNicked()
+        {
+            return isNicked;
         }
     }
 
