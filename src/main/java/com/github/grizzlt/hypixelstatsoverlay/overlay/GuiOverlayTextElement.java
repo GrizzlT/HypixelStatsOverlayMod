@@ -28,13 +28,17 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent
         if (this.textCache == null) return;
 
         List<String> lines = Minecraft.getMinecraft().fontRendererObj.listFormattedStringToWidth(this.textCache.getFormattedText(), size.x);
-        int marginTop = 0;
-        for (String line : lines)
-        {
-            int strWidth = Minecraft.getMinecraft().fontRendererObj.getStringWidth(line);
-            Minecraft.getMinecraft().fontRendererObj.drawStringWithShadow(line, offset.x + ((size.x - strWidth) / 2.0f), offset.y + marginTop, -1);
+        if (lines.size() > 1) {
+            int marginTop = 0;
+            for (String line : lines)
+            {
+                int strWidth = Minecraft.getMinecraft().fontRendererObj.getStringWidth(line);
+                Minecraft.getMinecraft().fontRendererObj.drawStringWithShadow(line, offset.x + ((size.x - strWidth) / 2.0f), offset.y + marginTop, -1);
 
-            marginTop += Minecraft.getMinecraft().fontRendererObj.FONT_HEIGHT;
+                marginTop += Minecraft.getMinecraft().fontRendererObj.FONT_HEIGHT;
+            }
+        } else {
+            Minecraft.getMinecraft().fontRendererObj.drawStringWithShadow(lines.get(0), offset.x, offset.y, -1);
         }
     }
 
@@ -42,7 +46,7 @@ public class GuiOverlayTextElement implements IGuiOverlayComponent
     public int getMaxWidth(@NotNull Vector2i size)
     {
         if (this.textCache == null) return 0;
-        return Math.min(size.x, Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.textCache.getFormattedText()));
+        return Math.min(size.x, Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.textCache.getFormattedText())) + 2;
     }
 
     @Override
