@@ -1,12 +1,13 @@
 {
   "homepage": "https://github.com/GrizzlT/HypixelStatsOverlayMod/releases",
   "promos": {
-    "1.8.9-latest": "2.0.2",
-    "1.8.9-recommended": "2.0.2"
+    "1.8.9-latest": "2.0.3",
+    "1.8.9-recommended": "2.0.3"
   },
   "1.8.9": {
     "2.0.0": "published online",
     "2.0.1": "added update json",
-    "2.0.2": "Hotfix crashing bug"
+    "2.0.2": "Hotfix crashing bug",
+    "2.0.3": "- ghosted mods for server\n- Optimized lobby request\n- Fixed custom font rendering bug\n- Improved gui drawing"
   }
 }
