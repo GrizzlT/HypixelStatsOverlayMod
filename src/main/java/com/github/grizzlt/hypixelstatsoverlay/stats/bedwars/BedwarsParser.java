@@ -136,8 +136,7 @@ public class BedwarsParser implements IGameParser
 
         public void calculateScore()
         {
-            double fkdrMax = Math.max(0, fkdr);
-            this.score = (10 + Math.max(level, 0)) * fkdrMax * fkdrMax * (winstreak > 1 ? winstreak * 1.625 : 1);
+            this.score = (Math.max(level, 0) + Math.max(0, fkdr * 11)) * ((Math.pow(2, wlr - 2) / 5) + 0.95) * Math.pow(1.07, winstreak);
         }
 
         @Override

@@ -7,7 +7,7 @@
   "mcversion": "${mcversion}",
   "url": "https://github.com/GrizzlT/HypixelStatsOverlayMod",
   "authorList": ["GrizzlT"],
-  "credits": "The Forge and FML guys and Hypixel PublicAPI, for making this possible\n, cultar, TinyShisu and Ethanos420 for being guinea pigs <3",
+  "credits": "The Forge and FML guys and Hypixel PublicAPI, for making this possible,\nTinyShisu and cultar for gathering information\nAnd Ethanos420 for helping with a lot of things <3",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []
