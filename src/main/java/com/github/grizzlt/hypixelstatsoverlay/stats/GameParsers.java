@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class GameParsers
 {
-    private static final Map<ServerType, IGameParser> PARSERS = new HashMap<>();
+    public static final Map<ServerType, IGameParser> PARSERS = new HashMap<>();
 
     private final AtomicReference<ServerType> currentGameType = new AtomicReference<>(LobbyType.MAIN);
     //private String mode = "";
@@ -39,7 +39,7 @@ public class GameParsers
         }
 
         System.out.println("Sent status request!");
-        this.prevRequest = HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getStatus(Minecraft.getMinecraft().thePlayer.getUniqueID()))
+        this.prevRequest = HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> Mono.fromFuture(api.getStatus(Minecraft.getMinecraft().thePlayer.getUniqueID())))
                 .flatMap(statusReply -> Mono.fromRunnable(() ->{
                     System.out.println("Status request came back!");
 

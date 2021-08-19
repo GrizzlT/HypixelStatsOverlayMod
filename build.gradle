@@ -2,14 +2,10 @@
 // For those who want the bleeding edge
 buildscript {
     repositories {
-        jcenter()
         mavenCentral()
         maven {
             name = "forge"
             url = "http://files.minecraftforge.net/maven"
-        }
-        maven {
-            url = "https://plugins.gradle.org/m2"
         }
         maven {
             name = 'SpongePowered'
@@ -19,12 +15,10 @@ buildscript {
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
         classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
-        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
     }
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'org.spongepowered.mixin'
-apply plugin: 'com.github.johnrengelman.shadow'
 
 version = "2.0.2"
 group= "com.github.grizzlt.hypixelstatsoverlay" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
@@ -42,48 +36,39 @@ minecraft {
     // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 }
 
+configurations {
+    shade
+    compile.extendsFrom(shade)
+}
+
 repositories {
-    mavenLocal()
     mavenCentral()
-    jcenter()
     maven { url "https://jitpack.io" }
     maven {
         name = 'spongepowered-repo'
         url = 'https://repo.spongepowered.org/maven/'
     }
+    maven { url 'https://repo.hypixel.net/repository/Hypixel/' }
 }
 
 dependencies {
-    compile('org.spongepowered:mixin:0.6.4-SNAPSHOT') {
+    shade('org.spongepowered:mixin:0.6.4-SNAPSHOT') {
         exclude module: 'launchwrapper'
     }
 
-    compile 'com.github.GrizzlT:ServerBasedClientModLibrary:1.8.9-SNAPSHOT'
-    provided 'com.github.GrizzlT:HypixelPublicAPIMod:v2.1.0-library'
+    shade 'com.github.GrizzlT:ServerBasedClientModLibrary:1.8.9-SNAPSHOT'
+    compile 'com.github.GrizzlT:HypixelPublicAPIMod:library-SNAPSHOT'
 
-    provided 'org.jetbrains:annotations:21.0.1'
+    compile 'org.jetbrains:annotations:21.0.1'
 }
 
 mixin {
     add sourceSets.main, 'hypixelstatsoverlay.mixins.refmap.json'
 }
 
-shadowJar {
-    dependencies {
-        include(dependency('org.spongepowered:mixin'))
-        include(dependency('com.github.GrizzlT:ServerBasedClientModLibrary'))
-        exclude(dependency('com.github.grizzlt.hypixel-public-api:hypixel-public-api-modapi'))
-        exclude(dependency('org.jetbrains:annotations'))
-    }
-
-    classifier = 'mixin-shadow'
-}
-
-build.dependsOn(shadowJar)
-
 //noinspection GroovyMissingReturnStatement
 reobf {
-    shadowJar {
+    jar {
         extraLines "PK: reactor com/github/grizzlt/hypixelpublicapi/shadowedLibs/reactor"
         extraLines "PK: net/hypixel/api com/github/grizzlt/hypixelpublicapi/shadowedLibs/net/hypixel/api"
         extraLines "PK: org/reactivestreams com/github/grizzlt/hypixelpublicapi/shadowedLibs/org/reactivestreams"
@@ -93,7 +78,15 @@ reobf {
     }
 }
 
-shadowJar {
+jar {
+    dependsOn configurations.compile
+    from {
+        configurations.shade.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/INDEX.LIST', 'META-INF/**'
+
     manifest.attributes(
             'MixinConfigs': 'hypixelstatsoverlay.mixins.json',
             'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
