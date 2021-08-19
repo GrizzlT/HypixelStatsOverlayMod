@@ -1,9 +1,8 @@
 package com.github.grizzlt.hypixelstatsoverlay.stats;
 
 import net.hypixel.api.reply.StatusReply;
-import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.common.config.Configuration;
 
 public interface IGameParser
 {
@@ -12,4 +11,6 @@ public interface IGameParser
     void onRenderGameOverlayEvent(RenderGameOverlayEvent event);
 
     void registerEvents();
+
+    void loadConfig(Configuration config);
 }

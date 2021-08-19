@@ -3,6 +3,7 @@ package com.github.grizzlt.hypixelstatsoverlay;
 import com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModApi;
 import com.github.grizzlt.hypixelstatsoverlay.commands.PartyInspectCommand;
 import com.github.grizzlt.hypixelstatsoverlay.commands.PartyResetCommand;
+import com.github.grizzlt.hypixelstatsoverlay.config.ConfigManager;
 import com.github.grizzlt.hypixelstatsoverlay.events.HypixelAPIReceiver;
 import com.github.grizzlt.hypixelstatsoverlay.events.RenderOverlayEventHandler;
 import com.github.grizzlt.hypixelstatsoverlay.stats.GameParsers;
@@ -17,6 +18,7 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.common.ForgeVersion;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.ModContainer;
@@ -30,13 +32,17 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-@Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME, clientSideOnly = true, updateJSON = "https://github.com/GrizzlT/HypixelStatsOverlayMod/raw/master/updater/updater.json")
+@Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME, clientSideOnly = true,
+        guiFactory = "com.github.grizzlt.hypixelstatsoverlay.config.HypixelStatsConfigFactory",
+        updateJSON = "https://github.com/GrizzlT/HypixelStatsOverlayMod/raw/master/updater/updater.json"
+)
 public class HypixelStatsOverlayMod
 {
     private final HypixelAPIReceiver apiContainer = new HypixelAPIReceiver();
     private final GameParsers gameParsers = new GameParsers();
     private final PartyManager partyManager = new PartyManager();
 
+    private final ConfigManager configManager = new ConfigManager();
     private final ServerBasedRegisterUtil serverBasedRegisterUtil = new ServerBasedRegisterUtil(address -> address.getHostName().contains("hypixel.net"));
 
     private boolean isConnectingToServer = false;
@@ -50,6 +56,8 @@ public class HypixelStatsOverlayMod
     {
         this.serverBasedRegisterUtil.registerCommand(new PartyInspectCommand());
         this.serverBasedRegisterUtil.registerCommand(new PartyResetCommand());
+
+        configManager.load();
     }
 
     @Mod.EventHandler
@@ -100,6 +108,14 @@ public class HypixelStatsOverlayMod
         }
     }
 
+    @SubscribeEvent
+    public void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event)
+    {
+        if (!event.modID.equals(Reference.MOD_ID)) return;
+
+        this.configManager.configuration.save();
+    }
+
     @NotNull
     public HypixelPublicAPIModApi getHypixelApiMod()
     {
@@ -116,5 +132,10 @@ public class HypixelStatsOverlayMod
     public PartyManager getPartyManager()
     {
         return this.partyManager;
+    }
+
+    public ConfigManager getConfigManager()
+    {
+        return this.configManager;
     }
 }

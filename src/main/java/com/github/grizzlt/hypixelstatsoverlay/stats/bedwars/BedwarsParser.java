@@ -5,10 +5,8 @@ import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerListUpdateEvent;
 import com.github.grizzlt.hypixelstatsoverlay.stats.IGameParser;
 import com.github.grizzlt.hypixelstatsoverlay.stats.gui.IPlayerGameData;
-import com.github.grizzlt.hypixelstatsoverlay.util.JsonHelper;
 import com.github.grizzlt.hypixelstatsoverlay.util.ReflectionContainer;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import net.hypixel.api.reply.PlayerReply;
 import net.hypixel.api.reply.StatusReply;
 import net.minecraft.client.Minecraft;
@@ -17,14 +15,14 @@ import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.config.ConfigCategory;
+import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.Disposable;
+import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -79,6 +77,14 @@ public class BedwarsParser implements IGameParser
     }
 
     @Override
+    public void loadConfig(Configuration config)
+    {
+        ConfigCategory bedwarsCat = config.getCategory("stats.bedwars");
+        config.get(bedwarsCat.getQualifiedName(), "display_mode", GameMode.OVERALL.getConfigValue(), "Selects what mode's stats will be displayed")
+                .setValidValues(Arrays.stream(GameMode.values()).map(GameMode::getConfigValue).toArray(String[]::new));
+    }
+
+    @Override
     public void registerEvents()
     {
         MinecraftForge.EVENT_BUS.register(this);
@@ -96,10 +102,10 @@ public class BedwarsParser implements IGameParser
         {
             System.out.println("Gathering stats for " + playerId.toString());
             this.playersInList.put(playerId, new BedwarsProfile(false));
-            this.sentRequests.add(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getPlayerByUuid(playerId))
+            this.sentRequests.add(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> Mono.fromFuture(api.getPlayerByUuid(playerId)))
                     .filter(player -> player.getPlayer() != null)
                     .map(PlayerReply::getPlayer)
-                    .map(json -> new BedwarsProfile(getBwLevel(json), getWinStreak(json), getFKDR(json), getWinLossRatio(json), getBBLR(json)))
+                    .map(player -> new BedwarsProfile(getBwLevel(player), getWinStreak(player), getFKDR(player), getWinLossRatio(player), getBBLR(player)))
                     .defaultIfEmpty(BedwarsProfile.NICKED)
                     .subscribe(profile -> this.playersInList.put(playerId, profile)));
         }
@@ -136,7 +142,7 @@ public class BedwarsParser implements IGameParser
 
         public void calculateScore()
         {
-            this.score = (Math.max(level, 0) + Math.max(0, fkdr * 11)) * ((Math.pow(2, wlr - 2) / 5) + 0.95) * Math.pow(1.07, winstreak);
+            this.score = (Math.max(level, 0) + Math.max(0, fkdr) * 75) * ((Math.pow(2, wlr - 2) / 5) + 0.95) * Math.pow(1.07, winstreak);
         }
 
         @Override
@@ -154,11 +160,11 @@ public class BedwarsParser implements IGameParser
     /**
      * @return BW level: -1 = unknown
      */
-    private static int getBwLevel(JsonObject playerObject)
+    private static int getBwLevel(PlayerReply.Player playerObject)
     {
-        JsonElement bwLevelElement = JsonHelper.getObjectUsingPath(playerObject, "achievements.bedwars_level");
-        if (bwLevelElement != null) {
-            return bwLevelElement.getAsInt();
+        JsonElement levelElement = playerObject.getProperty("achievements.bedwars_level");
+        if (levelElement != null) {
+            return levelElement.getAsInt();
         }
         return -1;
     }
@@ -166,13 +172,13 @@ public class BedwarsParser implements IGameParser
     /**
      * @return FKDR: -2 = unknown, -1 = no final deaths
      */
-    private static double getFKDR(JsonObject playerObject)
+    private static double getFKDR(PlayerReply.Player playerObject)
     {
-        JsonElement finalDeathsObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.final_deaths_bedwars");
+        JsonElement finalDeathsObj = playerObject.getProperty("stats.Bedwars.final_deaths_bedwars");
         if (finalDeathsObj == null) {
             return -1.0;
         }
-        JsonElement finalKillsObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.final_kills_bedwars");
+        JsonElement finalKillsObj = playerObject.getProperty("stats.Bedwars.final_kills_bedwars");
         if (finalKillsObj == null) {
             return -2.0;
         }
@@ -187,9 +193,9 @@ public class BedwarsParser implements IGameParser
     /**
      * @return WS: -1 = unknown
      */
-    private static int getWinStreak(JsonObject playerObject)
+    private static int getWinStreak(PlayerReply.Player playerObject)
     {
-        JsonElement wsElement = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.winstreak");
+        JsonElement wsElement = playerObject.getProperty("stats.Bedwars.winstreak");
         if (wsElement == null) {
             return -1;
         }
@@ -199,13 +205,13 @@ public class BedwarsParser implements IGameParser
     /**
      * @return WLR: -2.0 = unknown, -1.0 = no losses
      */
-    private static double getWinLossRatio(JsonObject playerObject)
+    private static double getWinLossRatio(PlayerReply.Player playerObject)
     {
-        JsonElement lossesObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.losses_bedwars");
+        JsonElement lossesObj = playerObject.getProperty("stats.Bedwars.losses_bedwars");
         if (lossesObj == null) {
             return -1.0;
         }
-        JsonElement winsObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.wins_bedwars");
+        JsonElement winsObj = playerObject.getProperty("stats.Bedwars.wins_bedwars");
         if (winsObj == null) {
             return -2.0;
         }
@@ -220,13 +226,13 @@ public class BedwarsParser implements IGameParser
     /**
      * @return BBLR: -2.0 = unknown, -1.0 = no beds lost
      */
-    private static double getBBLR(JsonObject playerObject)
+    private static double getBBLR(PlayerReply.Player playerObject)
     {
-        JsonElement lostObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.beds_lost_bedwars");
+        JsonElement lostObj = playerObject.getProperty("stats.Bedwars.beds_lost_bedwars");
         if (lostObj == null) {
             return -1.0;
         }
-        JsonElement brokenObj = JsonHelper.getObjectUsingPath(playerObject, "stats.Bedwars.beds_broken_bedwars");
+        JsonElement brokenObj = playerObject.getProperty("stats.Bedwars.beds_broken_bedwars");
         if (brokenObj == null) {
             return -2.0;
         }
@@ -236,5 +242,34 @@ public class BedwarsParser implements IGameParser
             return -1.0;
         }
         return (double)broken / (double)lost;
+    }
+
+    public enum GameMode
+    {
+        LOBBY("LOBBY", "lobby"),
+        OVERALL(null, "overall"),
+        SOLO("EIGHT_ONE", "solo"),
+        DOUBLES("EIGHT_TWO", "doubles"),
+        THREES("FOUR_THREE", "3s"),
+        FOURS("FOUR_FOUR", "4s"),
+        FOURFOUR("TWO_FOUR", "4v4"),
+        ULTIMATE2s("EIGHT_TWO_ULTIMATE", "ultimate2s"),
+        ULTIMATE4s("FOUR_FOUR_ULTIMATE", "ultimate4s"),
+        PRACTICE("PRACTICE", "practice"),
+        CASTLE("CASTLE", "castle");
+
+        private final String apiName;
+        private final String configValue;
+
+        GameMode(String apiName, String configValue)
+        {
+            this.apiName = apiName;
+            this.configValue = configValue;
+        }
+
+        public String getConfigValue()
+        {
+            return configValue;
+        }
     }
 }
