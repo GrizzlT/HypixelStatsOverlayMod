@@ -2,13 +2,11 @@ package com.github.grizzlt.hypixelstatsoverlay.stats.cache;
 
 import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerChangedServerWorldEvent;
-import net.hypixel.api.reply.PlayerReply;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.Iterator;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -18,9 +16,9 @@ public class PlayerDataLookupCache
 {
     private final ConcurrentMap<UUID, PlayerDataCacheEntry<LobbyBasedCacheExpiry>> LOBBY_PLAYER_DATA = new ConcurrentHashMap<>();
 
-    public Optional<PlayerReply> getOrLookupPlayer(UUID playerUuid, LobbyBasedCacheExpiry cacheExpiry)
+    public PlayerDataCacheEntry<LobbyBasedCacheExpiry> getOrLookupPlayer(UUID playerUuid, LobbyBasedCacheExpiry cacheExpiry)
     {
-        return LOBBY_PLAYER_DATA.computeIfAbsent(playerUuid, uuidToPlayerReply(cacheExpiry)).getPlayerData();
+        return LOBBY_PLAYER_DATA.computeIfAbsent(playerUuid, uuidToPlayerReply(cacheExpiry));
     }
 
     @SubscribeEvent

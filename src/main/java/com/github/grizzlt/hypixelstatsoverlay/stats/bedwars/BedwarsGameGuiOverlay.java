@@ -58,15 +58,9 @@ public class BedwarsGameGuiOverlay extends GenericGameGuiOverlay<BedwarsParser.B
     }
 
     @Override
-    protected void lookupPlayer(UUID playerId)
-    {
-        bwParser.lookupPlayer(playerId);
-    }
-
-    @Override
     protected BedwarsParser.BedwarsProfile getGameDataForPlayer(UUID playerId)
     {
-        return bwParser.getPlayerDataMap().get(playerId);
+        return bwParser.getPlayerProfile(playerId);
     }
 
     @Override
@@ -91,8 +85,8 @@ public class BedwarsGameGuiOverlay extends GenericGameGuiOverlay<BedwarsParser.B
     protected List<NetworkPlayerInfo> sortPartyPlayers(List<NetworkPlayerInfo> players)
     {
         return players.stream().sorted((o1, o2) -> {
-            BedwarsParser.BedwarsProfile bwProfile1 = this.bwParser.getPlayerDataMap().get(o1.getGameProfile().getId());
-            BedwarsParser.BedwarsProfile bwProfile2 = this.bwParser.getPlayerDataMap().get(o2.getGameProfile().getId());
+            BedwarsParser.BedwarsProfile bwProfile1 = this.bwParser.getPlayerProfile(o1.getGameProfile().getId());
+            BedwarsParser.BedwarsProfile bwProfile2 = this.bwParser.getPlayerProfile(o2.getGameProfile().getId());
 
             return ComparisonChain.start()
                     .compareTrueFirst(HypixelStatsOverlayMod.instance.getPartyManager().getPartyLeader().getSecond().equals(o1.getGameProfile().getId()), HypixelStatsOverlayMod.instance.getPartyManager().getPartyLeader().getSecond().equals(o2.getGameProfile().getId()))

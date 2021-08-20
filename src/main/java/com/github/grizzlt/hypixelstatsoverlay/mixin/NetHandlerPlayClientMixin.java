@@ -4,6 +4,7 @@ import com.github.grizzlt.hypixelpublicapi.error.PublicAPIKeyMissingException;
 import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerChangedServerWorldEvent;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerListUpdateEvent;
+import com.github.grizzlt.serverbasedmodlibrary.ServerBasedRegisterUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.network.play.server.S08PacketPlayerPosLook;
@@ -38,7 +39,9 @@ public abstract class NetHandlerPlayClientMixin
     @Inject(method = "handlePlayerPosLook", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;displayGuiScreen(Lnet/minecraft/client/gui/GuiScreen;)V"))
     public void onTerrainLoadingOver(S08PacketPlayerPosLook packetIn, CallbackInfo ci)
     {
-        if (this.prevRequest != null) {
+        if (!ServerBasedRegisterUtil.connectedToServer) return;
+
+        if (this.prevRequest != null && !this.prevRequest.isDisposed()) {
             this.prevRequest.dispose();
         }
 
@@ -46,10 +49,10 @@ public abstract class NetHandlerPlayClientMixin
         this.prevRequest = HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> Mono.fromFuture(api.getStatus(Minecraft.getMinecraft().thePlayer.getUniqueID())))
                 .doOnError(PublicAPIKeyMissingException.class, e -> {
                     System.out.println("API-Key was not set!");
-                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("§cDon't forget to set your api key!! Run §6/hpapiquickstart§r§c once."));
+                    Minecraft.getMinecraft().addScheduledTask(() -> Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("§cDon't forget to set your api key!! Run §6/hpapiquickstart§r§c once.")));
                 }).subscribe(statusReply -> {
                     System.out.println("Status request came back!");
-                    MinecraftForge.EVENT_BUS.post(new PlayerChangedServerWorldEvent(statusReply));
+                    Minecraft.getMinecraft().addScheduledTask(() -> MinecraftForge.EVENT_BUS.post(new PlayerChangedServerWorldEvent(statusReply)));
                 });
     }
 

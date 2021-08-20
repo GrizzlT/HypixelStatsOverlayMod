@@ -62,8 +62,6 @@ public abstract class GenericGameGuiOverlay<T extends IPlayerGameData>
         this.buildGuiSkeleton();
     }
 
-    protected abstract void lookupPlayer(UUID playerId);
-
     protected abstract T getGameDataForPlayer(UUID playerId);
 
     protected abstract List<NetworkPlayerInfo> sortNormalPlayers(List<NetworkPlayerInfo> players);
@@ -118,10 +116,6 @@ public abstract class GenericGameGuiOverlay<T extends IPlayerGameData>
                 .collect(Collectors.partitioningBy(info -> partyMembers.containsValue(info.getGameProfile().getId())));
         playersInGame = playerLists.get(false);
         playersInParty = playerLists.get(true);
-
-        //get their stats when not already looked up
-        playersInGame.forEach(profile -> this.lookupPlayer(profile.getGameProfile().getId()));
-        playersInParty.forEach(profile -> this.lookupPlayer(profile.getGameProfile().getId()));
 
         List<GuiLayoutType> layoutType = getStatsLayout();
         IGuiOverlayComponent gameGrid = TabGui.EMPTY;

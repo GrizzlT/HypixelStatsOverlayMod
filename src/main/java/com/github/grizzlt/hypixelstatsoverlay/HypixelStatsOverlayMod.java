@@ -7,6 +7,7 @@ import com.github.grizzlt.hypixelstatsoverlay.config.ConfigManager;
 import com.github.grizzlt.hypixelstatsoverlay.events.HypixelAPIReceiver;
 import com.github.grizzlt.hypixelstatsoverlay.events.RenderOverlayEventHandler;
 import com.github.grizzlt.hypixelstatsoverlay.stats.GameParsers;
+import com.github.grizzlt.hypixelstatsoverlay.stats.cache.PlayerDataLookupCache;
 import com.github.grizzlt.hypixelstatsoverlay.util.PartyManager;
 import com.github.grizzlt.serverbasedmodlibrary.ServerBasedRegisterUtil;
 import net.minecraft.client.Minecraft;
@@ -41,6 +42,7 @@ public class HypixelStatsOverlayMod
     private final HypixelAPIReceiver apiContainer = new HypixelAPIReceiver();
     private final GameParsers gameParsers = new GameParsers();
     private final PartyManager partyManager = new PartyManager();
+    private final PlayerDataLookupCache playerDataCache = new PlayerDataLookupCache();
 
     private final ConfigManager configManager = new ConfigManager();
     private final ServerBasedRegisterUtil serverBasedRegisterUtil = new ServerBasedRegisterUtil(address -> address.getHostName().contains("hypixel.net"));
@@ -66,12 +68,13 @@ public class HypixelStatsOverlayMod
         this.serverBasedRegisterUtil.Init();
         
         this.serverBasedRegisterUtil.registerToEventBus(new RenderOverlayEventHandler());
-        this.serverBasedRegisterUtil.registerToEventBus(gameParsers);
-        this.serverBasedRegisterUtil.registerToEventBus(partyManager);
+        this.serverBasedRegisterUtil.registerToEventBus(this.gameParsers);
+        this.serverBasedRegisterUtil.registerToEventBus(this.partyManager);
+        this.serverBasedRegisterUtil.registerToEventBus(this.playerDataCache);
 
-        GameParsers.registerGameParsers();
+        GameParsers.registerGameParsers(this.serverBasedRegisterUtil);
 
-        MinecraftForge.EVENT_BUS.register(apiContainer);
+        MinecraftForge.EVENT_BUS.register(this.apiContainer);
         MinecraftForge.EVENT_BUS.register(this);
 
         KeyBindManager.init();
@@ -134,8 +137,15 @@ public class HypixelStatsOverlayMod
         return this.partyManager;
     }
 
+    @NotNull
     public ConfigManager getConfigManager()
     {
         return this.configManager;
+    }
+
+    @NotNull
+    public PlayerDataLookupCache getPlayerDataCache()
+    {
+        return this.playerDataCache;
     }
 }

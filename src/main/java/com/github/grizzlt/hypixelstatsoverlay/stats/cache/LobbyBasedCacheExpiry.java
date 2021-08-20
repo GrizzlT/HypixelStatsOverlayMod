@@ -5,14 +5,28 @@ public class LobbyBasedCacheExpiry implements CacheExpiry
     private int countDown;
     private final ExpiryType expiryType;
 
-    public LobbyBasedCacheExpiry(ExpiryType expiryType, int initCountDown)
+    private boolean inLobbyOrGame;
+
+    public LobbyBasedCacheExpiry(ExpiryType expiryType, int initCountDown, boolean inLobby)
     {
         this.countDown = initCountDown;
         this.expiryType = expiryType;
+        this.inLobbyOrGame = (expiryType == ExpiryType.LEAVE_GAME) != inLobby;
     }
 
     public void onPlayerChangeWorld(boolean toLobby)
     {
+        if (expiryType == ExpiryType.LEAVE_GAME) {
+            if (inLobbyOrGame) {
+                this.countDown--;
+            }
+            this.inLobbyOrGame = !toLobby;
+        } else if (expiryType == ExpiryType.LEAVE_LOBBY) {
+            if (inLobbyOrGame) {
+                this.countDown--;
+            }
+            this.inLobbyOrGame = toLobby;
+        }
         if (expiryType == ExpiryType.BOTH) {
             this.countDown--;
         } else if (expiryType == ExpiryType.LOBBY && toLobby) {
@@ -32,6 +46,8 @@ public class LobbyBasedCacheExpiry implements CacheExpiry
     {
         LOBBY,
         GAME,
-        BOTH
+        BOTH,
+        LEAVE_GAME,
+        LEAVE_LOBBY,
     }
 }

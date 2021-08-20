@@ -4,8 +4,11 @@ import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import com.github.grizzlt.hypixelstatsoverlay.KeyBindManager;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerListUpdateEvent;
 import com.github.grizzlt.hypixelstatsoverlay.stats.IGameParser;
+import com.github.grizzlt.hypixelstatsoverlay.stats.cache.LobbyBasedCacheExpiry;
+import com.github.grizzlt.hypixelstatsoverlay.stats.cache.PlayerDataCacheEntry;
 import com.github.grizzlt.hypixelstatsoverlay.stats.gui.IPlayerGameData;
 import com.github.grizzlt.hypixelstatsoverlay.util.ReflectionContainer;
+import com.github.grizzlt.serverbasedmodlibrary.ServerBasedRegisterUtil;
 import com.google.gson.JsonElement;
 import net.hypixel.api.reply.PlayerReply;
 import net.hypixel.api.reply.StatusReply;
@@ -14,15 +17,13 @@ import net.minecraft.client.gui.GuiPlayerTabOverlay;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.ConfigCategory;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.jetbrains.annotations.NotNull;
-import reactor.core.Disposable;
-import reactor.core.publisher.Mono;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -31,17 +32,15 @@ public class BedwarsParser implements IGameParser
     private final BedwarsGameGuiOverlay bwGameTabRenderer = new BedwarsGameGuiOverlay(this);
 
     private final ConcurrentMap<UUID, BedwarsProfile> playersInList = new ConcurrentHashMap<>();
-    private final List<Disposable> sentRequests = new ArrayList<>();
 
     private boolean isInLobby = false;
+    private boolean isActive = false;
 
     @Override
     public void onPlayerSwitchWorld(@NotNull StatusReply statusReply)
     {
         this.isInLobby = statusReply.getSession().getMode().equals("LOBBY"); //change isInLobby default to true
 
-        this.sentRequests.forEach(Disposable::dispose);
-        this.sentRequests.clear();
         this.playersInList.clear();
 
         System.out.println("In lobby? " + this.isInLobby);
@@ -85,35 +84,53 @@ public class BedwarsParser implements IGameParser
     }
 
     @Override
-    public void registerEvents()
+    public void activate()
     {
-        MinecraftForge.EVENT_BUS.register(this);
+        this.isActive = true;
+    }
+
+    @Override
+    public void deActivate()
+    {
+        this.isActive = false;
+    }
+
+    @Override
+    public void registerEvents(ServerBasedRegisterUtil serverBasedRegisterUtil)
+    {
+        serverBasedRegisterUtil.registerToEventBus(this);
     }
 
     @SubscribeEvent
     public void onPlayerListUpdate(PlayerListUpdateEvent event)
     {
+        if (!this.isActive) return;
+
         this.bwGameTabRenderer.markDirty();
     }
 
-    public void lookupPlayer(UUID playerId)
+    public BedwarsProfile getPlayerProfile(UUID playerId)
     {
-        if (!this.playersInList.containsKey(playerId))
-        {
-            System.out.println("Gathering stats for " + playerId.toString());
-            this.playersInList.put(playerId, new BedwarsProfile(false));
-            this.sentRequests.add(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> Mono.fromFuture(api.getPlayerByUuid(playerId)))
-                    .filter(player -> player.getPlayer() != null)
-                    .map(PlayerReply::getPlayer)
-                    .map(player -> new BedwarsProfile(getBwLevel(player), getWinStreak(player), getFKDR(player), getWinLossRatio(player), getBBLR(player)))
-                    .defaultIfEmpty(BedwarsProfile.NICKED)
-                    .subscribe(profile -> this.playersInList.put(playerId, profile)));
+        if (this.playersInList.containsKey(playerId)) {
+            return this.playersInList.get(playerId);
         }
+
+        PlayerDataCacheEntry<LobbyBasedCacheExpiry> cacheEntry = HypixelStatsOverlayMod.instance.getPlayerDataCache().getOrLookupPlayer(playerId, new LobbyBasedCacheExpiry(LobbyBasedCacheExpiry.ExpiryType.LEAVE_GAME, 1, this.isInLobby));
+        if (cacheEntry.isPending()) {
+            return BedwarsProfile.PENDING_PROFILE;
+        }
+
+        return this.playersInList.computeIfAbsent(playerId, uuid -> cacheEntry.getPlayerData()
+                .map(PlayerReply::getPlayer)
+                .map(player -> new BedwarsProfile(getBwLevel(player), getWinStreak(player), getFKDR(player), getWinLossRatio(player), getBBLR(player)))
+                .orElse(BedwarsProfile.NICKED));
     }
 
     public static class BedwarsProfile implements IPlayerGameData
     {
-        public static BedwarsProfile NICKED = new BedwarsProfile(true);
+
+        public static final BedwarsProfile PENDING_PROFILE = new BedwarsProfile(false);
+        public static final BedwarsProfile NICKED = new BedwarsProfile(true);
 
         public int level = -1;
         public int winstreak = -1;
@@ -150,11 +167,6 @@ public class BedwarsParser implements IGameParser
         {
             return isNicked;
         }
-    }
-
-    public Map<UUID, BedwarsProfile> getPlayerDataMap()
-    {
-        return this.playersInList;
     }
 
     /**
