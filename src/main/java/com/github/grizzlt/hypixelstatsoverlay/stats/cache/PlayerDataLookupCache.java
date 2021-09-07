@@ -4,7 +4,6 @@ import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerChangedServerWorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.Iterator;
 import java.util.UUID;
@@ -41,7 +40,7 @@ public class PlayerDataLookupCache
     private static <E extends CacheExpiry> Function<UUID, PlayerDataCacheEntry<E>> uuidToPlayerReply(E cacheExpiry)
     {
         return uuid -> new PlayerDataCacheEntry<>(
-                HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> Mono.fromFuture(api.getPlayerByUuid(uuid))).subscribeOn(Schedulers.boundedElastic()),
+                Mono.fromFuture(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getPlayerByUuid(uuid))),
                 cacheExpiry
         );
     }

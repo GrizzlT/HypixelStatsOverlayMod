@@ -1,4 +1,3 @@
-
 // For those who want the bleeding edge
 buildscript {
     repositories {
@@ -20,11 +19,11 @@ buildscript {
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'org.spongepowered.mixin'
 
-version = "2.0.3"
+version = "2.1.0"
 group= "com.github.grizzlt.hypixelstatsoverlay" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "HypixelStatsOverlayMod"
 
-sourceCompatibility = targetCompatibility = 1.8
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 
 // Use UTF-8 for encoding
 compileJava.options.encoding = 'UTF-8'
@@ -57,7 +56,8 @@ dependencies {
     }
 
     shade 'com.github.GrizzlT:ServerBasedClientModLibrary:1.8.9-SNAPSHOT'
-    compile 'com.github.GrizzlT:HypixelPublicAPIMod:library-SNAPSHOT'
+    compile 'com.github.GrizzlT:HypixelPublicAPIMod:master-SNAPSHOT'
+    compile 'com.github.GrizzlT.PublicAPI:hypixel-api-transport-reactor:bugfix~reactor_concurrency-SNAPSHOT'
 
     compile 'org.jetbrains:annotations:21.0.1'
 }
@@ -69,10 +69,8 @@ mixin {
 //noinspection GroovyMissingReturnStatement
 reobf {
     jar {
-        extraLines "PK: reactor com/github/grizzlt/hypixelpublicapi/shadowedLibs/reactor"
-        extraLines "PK: net/hypixel/api com/github/grizzlt/hypixelpublicapi/shadowedLibs/net/hypixel/api"
-        extraLines "PK: org/reactivestreams com/github/grizzlt/hypixelpublicapi/shadowedLibs/org/reactivestreams"
-        extraLines "PK: io/netty/channel io/netty/channel"
+        extraLines "PK: reactor com/github/grizzlt/hypixelapimod/shadowedLibs/reactor"
+        extraLines "PK: org/reactivestreams com/github/grizzlt/hypixelapimod/shadowedLibs/org/reactivestreams"
 
         extraLines "PK: com/github/grizzlt/serverbasedmodlibrary com/github/grizzlt/hypixelstatsoverlay/shadowedLibs/com/github/grizzlt/serverbasedmodlibrary"
     }

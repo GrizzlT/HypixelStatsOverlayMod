@@ -6,10 +6,11 @@ import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PlayerDataCacheEntry<E extends CacheExpiry>
 {
-    private PlayerReply playerData = null;
+    private AtomicReference<PlayerReply> playerData = new AtomicReference<>();
     private final E cacheExpiry;
 
     private AtomicBoolean isPending = new AtomicBoolean(true);
@@ -19,7 +20,7 @@ public class PlayerDataCacheEntry<E extends CacheExpiry>
     {
         this.cacheExpiry = cacheExpiry;
         this.pendingRequest = playerRequest.subscribe(reply -> {
-            this.playerData = reply;
+            this.playerData.set(reply);
             this.isPending.set(false);
         });
     }
@@ -31,7 +32,7 @@ public class PlayerDataCacheEntry<E extends CacheExpiry>
 
     public Optional<PlayerReply> getPlayerData()
     {
-        return Optional.ofNullable(this.playerData);
+        return Optional.ofNullable(this.playerData.get());
     }
 
     public E getCacheExpiry()

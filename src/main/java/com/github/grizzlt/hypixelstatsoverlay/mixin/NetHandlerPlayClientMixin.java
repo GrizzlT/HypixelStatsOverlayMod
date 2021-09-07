@@ -1,6 +1,6 @@
 package com.github.grizzlt.hypixelstatsoverlay.mixin;
 
-import com.github.grizzlt.hypixelpublicapi.error.PublicAPIKeyMissingException;
+import com.github.grizzlt.hypixelapimod.api.error.PublicAPIKeyMissingException;
 import com.github.grizzlt.hypixelstatsoverlay.HypixelStatsOverlayMod;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerChangedServerWorldEvent;
 import com.github.grizzlt.hypixelstatsoverlay.events.PlayerListUpdateEvent;
@@ -46,7 +46,7 @@ public abstract class NetHandlerPlayClientMixin
         }
 
         System.out.println("Sent status request!");
-        this.prevRequest = HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> Mono.fromFuture(api.getStatus(Minecraft.getMinecraft().thePlayer.getUniqueID())))
+        this.prevRequest = Mono.fromFuture(HypixelStatsOverlayMod.instance.getHypixelApiMod().handleHypixelAPIRequest(api -> api.getStatus(Minecraft.getMinecraft().thePlayer.getUniqueID())))
                 .doOnError(PublicAPIKeyMissingException.class, e -> {
                     System.out.println("API-Key was not set!");
                     Minecraft.getMinecraft().addScheduledTask(() -> Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("§cDon't forget to set your api key!! Run §6/hpapiquickstart§r§c once.")));

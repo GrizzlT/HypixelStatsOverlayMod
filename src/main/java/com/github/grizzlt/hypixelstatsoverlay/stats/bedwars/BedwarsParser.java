@@ -23,15 +23,15 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public class BedwarsParser implements IGameParser
 {
     private final BedwarsGameGuiOverlay bwGameTabRenderer = new BedwarsGameGuiOverlay(this);
 
-    private final ConcurrentMap<UUID, BedwarsProfile> playersInList = new ConcurrentHashMap<>();
+    private final Map<UUID, BedwarsProfile> playersInList = new HashMap<>();
 
     private boolean isInLobby = false;
     private boolean isActive = false;
@@ -122,8 +122,12 @@ public class BedwarsParser implements IGameParser
 
         return this.playersInList.computeIfAbsent(playerId, uuid -> cacheEntry.getPlayerData()
                 .map(PlayerReply::getPlayer)
-                .map(player -> new BedwarsProfile(getBwLevel(player), getWinStreak(player), getFKDR(player), getWinLossRatio(player), getBBLR(player)))
-                .orElse(BedwarsProfile.NICKED));
+                .map(player -> {
+                    if (player.exists()) {
+                        return new BedwarsProfile(getBwLevel(player), getWinStreak(player), getFKDR(player), getWinLossRatio(player), getBBLR(player));
+                    }
+                    return BedwarsProfile.NICKED;
+                }).orElse(BedwarsProfile.NICKED));
     }
 
     public static class BedwarsProfile implements IPlayerGameData

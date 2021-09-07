@@ -1,10 +1,11 @@
 package com.github.grizzlt.hypixelstatsoverlay;
 
-import com.github.grizzlt.hypixelpublicapi.HypixelPublicAPIModApi;
+import com.github.grizzlt.hypixelapimod.api.HypixelPublicAPIModApi;
+import com.github.grizzlt.hypixelapimod.api.event.HypixelAPIReadyEvent;
 import com.github.grizzlt.hypixelstatsoverlay.commands.PartyInspectCommand;
 import com.github.grizzlt.hypixelstatsoverlay.commands.PartyResetCommand;
 import com.github.grizzlt.hypixelstatsoverlay.config.ConfigManager;
-import com.github.grizzlt.hypixelstatsoverlay.events.HypixelAPIReceiver;
+import com.github.grizzlt.hypixelstatsoverlay.events.HypixelAPIReceiverImpl;
 import com.github.grizzlt.hypixelstatsoverlay.events.RenderOverlayEventHandler;
 import com.github.grizzlt.hypixelstatsoverlay.stats.GameParsers;
 import com.github.grizzlt.hypixelstatsoverlay.stats.cache.PlayerDataLookupCache;
@@ -31,15 +32,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Objects;
-
 @Mod(modid = Reference.MOD_ID, name = Reference.MOD_NAME, clientSideOnly = true,
         guiFactory = "com.github.grizzlt.hypixelstatsoverlay.config.HypixelStatsConfigFactory",
         updateJSON = "https://github.com/GrizzlT/HypixelStatsOverlayMod/raw/master/updater/updater.json"
 )
 public class HypixelStatsOverlayMod
 {
-    private final HypixelAPIReceiver apiContainer = new HypixelAPIReceiver();
+    private final HypixelAPIReceiverImpl apiContainer = new HypixelAPIReceiverImpl();
     private final GameParsers gameParsers = new GameParsers();
     private final PartyManager partyManager = new PartyManager();
     private final PlayerDataLookupCache playerDataCache = new PlayerDataLookupCache();
@@ -74,8 +73,9 @@ public class HypixelStatsOverlayMod
 
         GameParsers.registerGameParsers(this.serverBasedRegisterUtil);
 
-        MinecraftForge.EVENT_BUS.register(this.apiContainer);
         MinecraftForge.EVENT_BUS.register(this);
+
+        HypixelAPIReadyEvent.API_READY_EVENT.subscribeToEvent(this.apiContainer);
 
         KeyBindManager.init();
     }
@@ -98,7 +98,7 @@ public class HypixelStatsOverlayMod
         ForgeVersion.CheckResult result = ForgeVersion.getResult(modContainer);
         if (result.status == ForgeVersion.Status.FAILED) {
             System.out.println("Update checker failed to verify!");
-        } else if (result.status == ForgeVersion.Status.UP_TO_DATE) {
+        } else if (result.status == ForgeVersion.Status.UP_TO_DATE || result.status == ForgeVersion.Status.AHEAD) {
             System.out.println("Mod is up do date!");
         } else if (result.status == ForgeVersion.Status.OUTDATED) {
             System.out.println("New mod is available!");
@@ -122,7 +122,7 @@ public class HypixelStatsOverlayMod
     @NotNull
     public HypixelPublicAPIModApi getHypixelApiMod()
     {
-        return Objects.requireNonNull(this.apiContainer.getAPI());
+        return this.apiContainer.getAPI();
     }
 
     @NotNull
